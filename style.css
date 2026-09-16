@@ -145,6 +145,10 @@ input, select {
 
 .danger-btn { background: var(--pas-rentable); border-color: var(--pas-rentable); color: white; }
 
+.gain-positive { color: var(--rel-rentable); font-weight: 600; }
+.gain-negative { color: var(--pas-rentable); font-weight: 600; }
+.ratio-note { font-size: 0.78rem; color: var(--text-dim); margin-top: 3px; }
+
 .panel label {
   display: flex;
   flex-direction: column;

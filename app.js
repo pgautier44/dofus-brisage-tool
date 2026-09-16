@@ -111,14 +111,18 @@ function computeItemStats(item) {
   let avgPercent = null;
   let avgValue = null;
   let ratio = null;
+  let netGain = null;
 
   if (count > 0) {
     avgPercent = attempts.reduce((s, a) => s + a.percent, 0) / count;
     avgValue = attempts.reduce((s, a) => s + attemptValue(a), 0) / count;
-    if (unitCraftCost) ratio = avgValue / unitCraftCost;
+    if (unitCraftCost) {
+      ratio = avgValue / unitCraftCost;
+      netGain = avgValue - unitCraftCost;
+    }
   }
 
-  return { unitCraftCost, count, avgPercent, avgValue, ratio };
+  return { unitCraftCost, count, avgPercent, avgValue, ratio, netGain };
 }
 
 function classifyRatio(ratio) {
@@ -245,6 +249,10 @@ function sortedItems() {
         va = a.stats.avgValue;
         vb = b.stats.avgValue;
         break;
+      case 'netGain':
+        va = a.stats.netGain;
+        vb = b.stats.netGain;
+        break;
       case 'ratio':
       default:
         va = a.stats.ratio;
@@ -267,11 +275,13 @@ function renderItemsTable() {
   const rows = sortedItems();
 
   if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Aucun objet pour le moment. Ajoute-en un avec "+ Nouvel objet".</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Aucun objet pour le moment. Ajoute-en un avec "+ Nouvel objet".</td></tr>';
   } else {
     tbody.innerHTML = rows.map(({ item, stats }) => {
       const cat = classifyRatio(stats.ratio);
       const ratioLabel = stats.ratio !== null ? formatPercent(stats.ratio * 100, 0) : '—';
+      const netGainCls = stats.netGain === null ? '' : stats.netGain >= 0 ? 'gain-positive' : 'gain-negative';
+      const netGainLabel = stats.netGain === null ? '—' : (stats.netGain >= 0 ? '+' : '') + formatKamas(stats.netGain);
       return `
         <tr data-item-id="${item.id}">
           <td>${escapeHtml(item.name)}</td>
@@ -279,7 +289,11 @@ function renderItemsTable() {
           <td>${stats.count}</td>
           <td>${formatPercent(stats.avgPercent)}</td>
           <td>${formatKamas(stats.avgValue)}</td>
-          <td><span class="badge ${cat.cls}" title="Ratio valeur/coût : ${ratioLabel}">${cat.label}</span></td>
+          <td class="${netGainCls}">${netGainLabel}</td>
+          <td>
+            <span class="badge ${cat.cls}">${cat.label}</span>
+            <div class="ratio-note">${stats.ratio !== null ? ratioLabel + ' du coût de craft' : ''}</div>
+          </td>
           <td class="row-actions">
             <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
             <button type="button" class="edit-item-btn" data-id="${item.id}">Modifier</button>
@@ -434,7 +448,7 @@ function openAddAttemptForm(itemId) {
   const holder = document.createElement('tr');
   holder.className = 'add-attempt-holder';
   const td = document.createElement('td');
-  td.colSpan = 7;
+  td.colSpan = 8;
   td.appendChild(form);
   holder.appendChild(td);
   row.after(holder);
@@ -480,7 +494,7 @@ function openEditItemForm(itemId) {
   const holder = document.createElement('tr');
   holder.className = 'edit-item-holder';
   const td = document.createElement('td');
-  td.colSpan = 7;
+  td.colSpan = 8;
   td.appendChild(form);
   holder.appendChild(td);
   row.after(holder);
