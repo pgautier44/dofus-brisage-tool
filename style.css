@@ -1,16 +1,20 @@
 :root {
-  --bg: #0f1115;
-  --panel: #171a21;
-  --panel-2: #1f232c;
-  --border: #2a2f3a;
-  --text: #e8e9ec;
-  --text-dim: #9aa1ad;
-  --accent: #f0a020;
-  --rentable: #2e7d32;
-  --rel-rentable: #8bc34a;
-  --rel-pas-rentable: #ef6c00;
-  --pas-rentable: #c62828;
-  --no-data: #616161;
+  --bg: #f6f2ea;
+  --panel: #ffffff;
+  --panel-2: #f6efe2;
+  --border: #e4d9c4;
+  --text: #2b2418;
+  --text-dim: #7c7160;
+  --accent: #c9720f;
+  --accent-dark: #9a5a0c;
+  --rune-accent: #7c5a35;
+  --rentable: #2f9e44;
+  --rel-rentable: #74b816;
+  --rel-pas-rentable: #e8590c;
+  --pas-rentable: #e03131;
+  --no-data: #868e96;
+  --row-stripe: #faf7f0;
+  --row-hover: #f3e9d6;
 }
 
 * { box-sizing: border-box; }
@@ -24,17 +28,18 @@ body {
 }
 
 header {
-  padding: 24px 32px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 28px 32px 20px;
+  background: linear-gradient(135deg, var(--rune-accent), var(--accent) 65%, #e2973a);
+  color: #fff7ec;
 }
 
 header h1 { margin: 0 0 4px; font-size: 1.6rem; }
-.subtitle { margin: 0; color: var(--text-dim); }
+.subtitle { margin: 0; color: rgba(255, 247, 236, 0.85); }
 
 main {
-  max-width: 1100px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -43,9 +48,13 @@ main {
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--rune-accent);
   border-radius: 10px;
   padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(43, 36, 24, 0.06);
 }
+
+#items-section { border-top-color: var(--accent); }
 
 .card h2 { margin-top: 0; }
 
@@ -70,10 +79,11 @@ button:hover { border-color: var(--accent); }
 
 .primary-btn {
   background: var(--accent);
-  color: #1a1a1a;
-  border-color: var(--accent);
+  color: #211602;
+  border-color: var(--accent-dark);
   font-weight: 600;
 }
+.primary-btn:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
 .secondary-btn { background: var(--panel-2); }
 .cancel-btn { background: transparent; color: var(--text-dim); }
 
@@ -114,14 +124,14 @@ input, select {
 .add-attempt-holder td, .edit-item-holder td, .edit-attempt-holder td { padding: 0; border-bottom: none; }
 .add-attempt-form, .edit-item-form {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(0,0,0,0.35);
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(43, 36, 24, 0.15);
   margin: 10px 0;
 }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(43, 36, 24, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -139,13 +149,14 @@ input, select {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  box-shadow: 0 12px 32px rgba(43, 36, 24, 0.25);
 }
 .modal-box p { margin: 0; line-height: 1.45; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
 
 .danger-btn { background: var(--pas-rentable); border-color: var(--pas-rentable); color: white; }
 
-.gain-positive { color: var(--rel-rentable); font-weight: 600; }
+.gain-positive { color: #2b7a1f; font-weight: 600; }
 .gain-negative { color: var(--pas-rentable); font-weight: 600; }
 .ratio-note { font-size: 0.78rem; color: var(--text-dim); margin-top: 3px; }
 
@@ -174,7 +185,7 @@ td.row-actions {
   right: 0;
   z-index: 1;
   background: var(--panel);
-  box-shadow: -8px 0 12px -8px rgba(0, 0, 0, 0.6);
+  box-shadow: -8px 0 12px -8px rgba(43, 36, 24, 0.25);
 }
 
 table {
@@ -202,7 +213,10 @@ th.sorted::after {
   margin-left: 6px;
 }
 
-tbody tr:hover { background: rgba(255,255,255,0.03); }
+tbody tr:nth-child(even) { background: var(--row-stripe); }
+tbody tr:hover { background: var(--row-hover); }
+tbody tr:nth-child(even) td.row-actions,
+tbody tr:hover td.row-actions { background: inherit; }
 
 .badge {
   display: inline-block;
@@ -215,7 +229,7 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
 .legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
 .rentable { background: var(--rentable); }
-.rel-rentable { background: var(--rel-rentable); color: #142a08; }
+.rel-rentable { background: var(--rel-rentable); color: #1c3006; }
 .rel-pas-rentable { background: var(--rel-pas-rentable); }
 .pas-rentable { background: var(--pas-rentable); }
 .no-data { background: var(--no-data); }
@@ -254,5 +268,7 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
 
 .attempts-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
 .attempts-table th, .attempts-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.attempts-table tbody tr:nth-child(even) { background: var(--row-stripe); }
+.attempts-table tbody tr:hover { background: var(--row-hover); }
 
 .empty-state { color: var(--text-dim); font-style: italic; padding: 20px 0; text-align: center; }
