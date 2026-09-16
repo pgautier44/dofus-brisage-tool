@@ -19,11 +19,14 @@ brisage, et calcul automatique de rentabilité avec code couleur.
   supprimé individuellement depuis l'historique ("Détails").
   Les essais s'accumulent et le tableau calcule automatiquement :
   - le prix de craft unitaire **moyen** (moyenne des coûts unitaires de
-    chaque essai),
+    chaque essai — informatif),
   - le pourcentage moyen de brisage,
-  - la valeur moyenne des runes obtenues (le gain),
-  - le gain net (valeur des runes − coût de craft unitaire moyen),
-  - le ratio valeur obtenue / coût de craft,
+  - la valeur moyenne des runes obtenues par essai (le gain),
+  - le gain net **par série** (valeur des runes obtenues − coût total de
+    craft de la série, pas le coût unitaire — si tu crafts 10 objets pour
+    50 000 K et que le brisage rapporte 47 000 K de runes, c'est une perte
+    de 3 000 K, pas un gain),
+  - le ratio valeur obtenue / coût total de craft de la série,
   - une étiquette de rentabilité colorée : **Rentable**, **Relativement
     rentable**, **Relativement pas rentable**, **Pas rentable**.
 - **Tri du tableau** : clique sur l'en-tête d'une colonne pour trier
@@ -48,7 +51,7 @@ utilisé et ne sont pas partagées ailleurs.
 
 ## Seuils de rentabilité
 
-Le ratio = (valeur moyenne des runes obtenues) / (coût de craft unitaire) :
+Le ratio = (valeur des runes obtenues) / (coût total de craft de la série), moyenné sur tous les essais :
 
 | Ratio        | Statut                     |
 |--------------|-----------------------------|

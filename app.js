@@ -111,24 +111,28 @@ function computeItemStats(item) {
   const attempts = getItemAttempts(item.id);
   const count = attempts.length;
 
-  let unitCraftCost = null;
+  let unitCraftCost = null; // informational: average cost per crafted item
+  let avgCraftCost = null; // average TOTAL cost of the series, per essai — what profitability is judged against
   let avgPercent = null;
-  let avgValue = null;
+  let avgValue = null; // average TOTAL rune value obtained, per essai
   let ratio = null;
   let netGain = null;
 
   if (count > 0) {
     const unitCosts = attempts.map(attemptUnitCraftCost).filter((c) => c !== null);
     if (unitCosts.length > 0) unitCraftCost = unitCosts.reduce((s, c) => s + c, 0) / unitCosts.length;
+
+    avgCraftCost = attempts.reduce((s, a) => s + a.craftCost, 0) / count;
     avgPercent = attempts.reduce((s, a) => s + a.percent, 0) / count;
     avgValue = attempts.reduce((s, a) => s + attemptValue(a), 0) / count;
-    if (unitCraftCost) {
-      ratio = avgValue / unitCraftCost;
-      netGain = avgValue - unitCraftCost;
+
+    if (avgCraftCost) {
+      ratio = avgValue / avgCraftCost;
+      netGain = avgValue - avgCraftCost;
     }
   }
 
-  return { unitCraftCost, count, avgPercent, avgValue, ratio, netGain };
+  return { unitCraftCost, avgCraftCost, count, avgPercent, avgValue, ratio, netGain };
 }
 
 function classifyRatio(ratio) {
@@ -295,7 +299,7 @@ function renderItemsTable() {
           <td class="${netGainCls}">${netGainLabel}</td>
           <td>
             <span class="badge ${cat.cls}">${cat.label}</span>
-            <div class="ratio-note">${stats.ratio !== null ? ratioLabel + ' du coût de craft' : ''}</div>
+            <div class="ratio-note">${stats.ratio !== null ? ratioLabel + ' du coût de craft de la série' : ''}</div>
           </td>
           <td class="row-actions">
             <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
@@ -505,7 +509,7 @@ function openEditAttemptForm(attemptId) {
   insertInlineForm(form, {
     afterRowSelector: `.attempts-table tr[data-attempt-id="${attemptId}"]`,
     holderClass: 'edit-attempt-holder',
-    colspan: 6,
+    colspan: 7,
     focusSelector: '.attempt-craft-cost',
   });
 }
@@ -561,7 +565,7 @@ function renderDetail() {
   const attempts = getItemAttempts(item.id).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const rowsHtml = attempts.length === 0
-    ? '<tr><td colspan="6" class="empty-state">Aucun essai enregistré</td></tr>'
+    ? '<tr><td colspan="7" class="empty-state">Aucun essai enregistré</td></tr>'
     : attempts.map((a) => {
       const runesLabel = a.runes.length === 0
         ? '—'
@@ -573,13 +577,17 @@ function renderDetail() {
       const value = attemptValue(a);
       const date = new Date(a.date).toLocaleDateString('fr-FR');
       const unitCost = attemptUnitCraftCost(a);
+      const netGain = value - a.craftCost;
+      const netCls = netGain >= 0 ? 'gain-positive' : 'gain-negative';
+      const netLabel = (netGain >= 0 ? '+' : '') + formatKamas(netGain);
       return `
         <tr data-attempt-id="${a.id}">
           <td>${date}</td>
-          <td title="${a.craftCost} K pour ${a.craftQty} objet(s)">${formatKamas(unitCost)}</td>
+          <td>${formatKamas(a.craftCost)}<div class="ratio-note">${formatKamas(unitCost)}/u × ${a.craftQty}</div></td>
           <td>${formatPercent(a.percent)}</td>
           <td>${runesLabel}</td>
           <td>${formatKamas(value)}</td>
+          <td class="${netCls}">${netLabel}</td>
           <td class="row-actions">
             <button type="button" class="edit-attempt-btn" data-id="${a.id}">Modifier</button>
             <button type="button" class="delete-attempt-btn" data-id="${a.id}">✕</button>
@@ -593,7 +601,7 @@ function renderDetail() {
       <h3>Historique — ${escapeHtml(item.name)}</h3>
       <table class="attempts-table">
         <thead>
-          <tr><th>Date</th><th>Coût craft (unitaire)</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur</th><th></th></tr>
+          <tr><th>Date</th><th>Coût craft (série)</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur runes</th><th>Résultat</th><th></th></tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
