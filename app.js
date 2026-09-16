@@ -33,8 +33,50 @@ function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
   } catch (e) {
     console.error('Impossible de sauvegarder les données locales', e);
-    alert("Erreur : impossible d'enregistrer les données (stockage local plein ou indisponible).");
+    showAlert("Erreur : impossible d'enregistrer les données (stockage local plein ou indisponible).");
   }
+}
+
+// ---------- Custom modal (native confirm/alert are unreliable in sandboxed embeds) ----------
+
+function showModal({ message, confirmLabel, cancelLabel, danger = false }) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('modal-overlay');
+    const msgEl = document.getElementById('modal-message');
+    const cancelBtn = document.getElementById('modal-cancel-btn');
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+
+    msgEl.textContent = message;
+    confirmBtn.textContent = confirmLabel;
+    confirmBtn.classList.toggle('danger-btn', danger);
+    cancelBtn.hidden = !cancelLabel;
+    if (cancelLabel) cancelBtn.textContent = cancelLabel;
+    overlay.classList.remove('hidden');
+
+    function cleanup(result) {
+      overlay.classList.add('hidden');
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onOverlayClick);
+      resolve(result);
+    }
+    function onConfirm() { cleanup(true); }
+    function onCancel() { cleanup(false); }
+    function onOverlayClick(e) { if (e.target === overlay) cleanup(false); }
+
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlayClick);
+    confirmBtn.focus();
+  });
+}
+
+function showConfirm(message, { danger = false } = {}) {
+  return showModal({ message, confirmLabel: 'Confirmer', cancelLabel: 'Annuler', danger });
+}
+
+function showAlert(message) {
+  return showModal({ message, confirmLabel: 'OK', cancelLabel: null });
 }
 
 const state = {
@@ -122,11 +164,15 @@ function renderRuneTypes() {
   });
 
   container.querySelectorAll('.remove-rt-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const id = e.target.dataset.id;
       const usedInAttempt = state.data.attempts.some((a) => a.runes.some((r) => r.typeId === id));
-      if (usedInAttempt && !confirm('Cette rune est utilisée dans des essais existants. La supprimer du catalogue ne modifie pas l\'historique. Continuer ?')) {
-        return;
+      if (usedInAttempt) {
+        const ok = await showConfirm(
+          "Cette rune est utilisée dans des essais existants. La supprimer du catalogue ne modifie pas l'historique. Continuer ?",
+          { danger: true }
+        );
+        if (!ok) return;
       }
       state.data.runeTypes = state.data.runeTypes.filter((r) => r.id !== id);
       saveData();
@@ -236,6 +282,7 @@ function renderItemsTable() {
           <td><span class="badge ${cat.cls}" title="Ratio valeur/coût : ${ratioLabel}">${cat.label}</span></td>
           <td class="row-actions">
             <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
+            <button type="button" class="edit-item-btn" data-id="${item.id}">Modifier</button>
             <button type="button" class="toggle-detail-btn" data-id="${item.id}">Détails</button>
             <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
           </td>
@@ -247,6 +294,9 @@ function renderItemsTable() {
   tbody.querySelectorAll('.add-attempt-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => openAddAttemptForm(e.target.dataset.id));
   });
+  tbody.querySelectorAll('.edit-item-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => openEditItemForm(e.target.dataset.id));
+  });
   tbody.querySelectorAll('.toggle-detail-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       const id = e.target.dataset.id;
@@ -255,10 +305,11 @@ function renderItemsTable() {
     });
   });
   tbody.querySelectorAll('.delete-item-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const id = e.target.dataset.id;
       const item = state.data.items.find((i) => i.id === id);
-      if (!confirm(`Supprimer "${item.name}" et tous ses essais associés ?`)) return;
+      const ok = await showConfirm(`Supprimer "${item.name}" et tous ses essais associés ?`, { danger: true });
+      if (!ok) return;
       state.data.items = state.data.items.filter((i) => i.id !== id);
       state.data.attempts = state.data.attempts.filter((a) => a.itemId !== id);
       if (state.openDetailItemId === id) state.openDetailItemId = null;
@@ -335,12 +386,12 @@ function buildRuneRow(prefill) {
 }
 
 function openAddAttemptForm(itemId) {
-  closeAddAttemptForm();
+  closeInlineForms();
   const item = state.data.items.find((i) => i.id === itemId);
   if (!item) return;
 
   if (state.data.runeTypes.length === 0) {
-    alert("Ajoute d'abord au moins un type de rune dans la section 'Types de runes'.");
+    showAlert("Ajoute d'abord au moins un type de rune dans la section 'Types de runes'.");
     return;
   }
 
@@ -392,8 +443,50 @@ function openAddAttemptForm(itemId) {
   form.querySelector('.attempt-percent').focus();
 }
 
-function closeAddAttemptForm() {
-  document.querySelectorAll('.add-attempt-holder').forEach((el) => el.remove());
+function closeInlineForms() {
+  document.querySelectorAll('.add-attempt-holder, .edit-item-holder').forEach((el) => el.remove());
+}
+
+// ---------- Edit item form ----------
+
+function openEditItemForm(itemId) {
+  closeInlineForms();
+  const item = state.data.items.find((i) => i.id === itemId);
+  if (!item) return;
+
+  const template = document.getElementById('edit-item-template');
+  const form = template.content.firstElementChild.cloneNode(true);
+  form.querySelector('.item-name-label').textContent = item.name;
+  form.querySelector('.edit-item-name').value = item.name;
+  form.querySelector('.edit-item-craft-cost').value = item.craftCost;
+  form.querySelector('.edit-item-craft-qty').value = item.craftQty;
+
+  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = form.querySelector('.edit-item-name').value.trim();
+    const craftCost = Number(form.querySelector('.edit-item-craft-cost').value);
+    const craftQty = Number(form.querySelector('.edit-item-craft-qty').value);
+    if (!name || craftQty <= 0) return;
+    item.name = name;
+    item.craftCost = craftCost;
+    item.craftQty = craftQty;
+    saveData();
+    render();
+  });
+
+  const row = document.querySelector(`#items-table-body tr[data-item-id="${itemId}"]`);
+  const holder = document.createElement('tr');
+  holder.className = 'edit-item-holder';
+  const td = document.createElement('td');
+  td.colSpan = 7;
+  td.appendChild(form);
+  holder.appendChild(td);
+  row.after(holder);
+
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  form.querySelector('.edit-item-name').focus();
 }
 
 // ---------- Item detail (attempt history) ----------
@@ -466,7 +559,7 @@ function escapeHtml(str) {
 
 function render() {
   renderRuneTypes();
-  closeAddAttemptForm();
+  closeInlineForms();
   renderItemsTable();
   renderDetail();
 }
