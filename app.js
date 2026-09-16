@@ -83,11 +83,12 @@ const state = {
   data: loadData(),
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
+  searchQuery: '',
 };
 
 function formatKamas(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
-  return Math.round(n).toLocaleString('fr-FR') + ' K';
+  return Math.round(n).toLocaleString('fr-FR');
 }
 
 function formatPercent(n, decimals = 1) {
@@ -218,6 +219,11 @@ document.querySelectorAll('[data-cancel]').forEach((btn) => {
   });
 });
 
+document.getElementById('item-search').addEventListener('input', (e) => {
+  state.searchQuery = e.target.value.trim().toLowerCase();
+  renderItemsTable();
+});
+
 document.getElementById('add-item-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const name = document.getElementById('item-name').value.trim();
@@ -231,7 +237,10 @@ document.getElementById('add-item-form').addEventListener('submit', (e) => {
 
 function sortedItems() {
   const { column, direction } = state.sort;
-  const rows = state.data.items.map((item) => ({ item, stats: computeItemStats(item) }));
+  const items = state.searchQuery
+    ? state.data.items.filter((item) => item.name.toLowerCase().includes(state.searchQuery))
+    : state.data.items;
+  const rows = items.map((item) => ({ item, stats: computeItemStats(item) }));
 
   rows.sort((a, b) => {
     let va, vb;
@@ -282,7 +291,10 @@ function renderItemsTable() {
   const rows = sortedItems();
 
   if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Aucun objet pour le moment. Ajoute-en un avec "+ Nouvel objet".</td></tr>';
+    const message = state.searchQuery
+      ? `Aucun objet ne correspond à "${escapeHtml(state.searchQuery)}".`
+      : 'Aucun objet pour le moment. Ajoute-en un avec "+ Nouvel objet".';
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">${message}</td></tr>`;
   } else {
     tbody.innerHTML = rows.map(({ item, stats }) => {
       const cat = classifyRatio(stats.ratio);

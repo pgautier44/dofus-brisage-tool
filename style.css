@@ -159,6 +159,13 @@ input, select {
 
 .form-actions { display: flex; gap: 10px; }
 
+.search-input {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin-top: 14px;
+}
+
 .table-wrapper { overflow-x: auto; margin-top: 12px; }
 
 .actions-col,
