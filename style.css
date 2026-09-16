@@ -161,6 +161,15 @@ input, select {
 
 .table-wrapper { overflow-x: auto; margin-top: 12px; }
 
+.actions-col,
+td.row-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--panel);
+  box-shadow: -8px 0 12px -8px rgba(0, 0, 0, 0.6);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

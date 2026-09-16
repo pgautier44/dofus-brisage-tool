@@ -601,7 +601,7 @@ function renderDetail() {
       <h3>Historique — ${escapeHtml(item.name)}</h3>
       <table class="attempts-table">
         <thead>
-          <tr><th>Date</th><th>Coût craft (série)</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur runes</th><th>Résultat</th><th></th></tr>
+          <tr><th>Date</th><th>Coût craft (série)</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur runes</th><th>Résultat</th><th class="actions-col"></th></tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
