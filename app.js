@@ -292,7 +292,7 @@ function renderItemsTable() {
       return `
         <tr data-item-id="${item.id}">
           <td>${escapeHtml(item.name)}</td>
-          <td>${formatKamas(stats.unitCraftCost)}</td>
+          <td title="Moyenne calculée à partir des essais — pour corriger une valeur, ouvre 'Détails' puis 'Modifier' sur l'essai concerné">${formatKamas(stats.unitCraftCost)}</td>
           <td>${stats.count}</td>
           <td>${formatPercent(stats.avgPercent)}</td>
           <td>${formatKamas(stats.avgValue)}</td>
@@ -303,7 +303,7 @@ function renderItemsTable() {
           </td>
           <td class="row-actions">
             <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
-            <button type="button" class="edit-item-btn" data-id="${item.id}">Modifier</button>
+            <button type="button" class="edit-item-btn" data-id="${item.id}">Renommer</button>
             <button type="button" class="toggle-detail-btn" data-id="${item.id}">Détails</button>
             <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
           </td>
