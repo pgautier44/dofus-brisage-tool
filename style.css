@@ -111,7 +111,7 @@ input, select {
 }
 .panel h3, .panel h4 { margin: 0; }
 
-.add-attempt-holder td, .edit-item-holder td { padding: 0; border-bottom: none; }
+.add-attempt-holder td, .edit-item-holder td, .edit-attempt-holder td { padding: 0; border-bottom: none; }
 .add-attempt-form, .edit-item-form {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(0,0,0,0.35);

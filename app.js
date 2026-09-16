@@ -103,17 +103,23 @@ function attemptValue(attempt) {
   return attempt.runes.reduce((sum, r) => sum + r.qty * r.price, 0);
 }
 
+function attemptUnitCraftCost(attempt) {
+  return attempt.craftQty > 0 ? attempt.craftCost / attempt.craftQty : null;
+}
+
 function computeItemStats(item) {
-  const unitCraftCost = item.craftQty > 0 ? item.craftCost / item.craftQty : null;
   const attempts = getItemAttempts(item.id);
   const count = attempts.length;
 
+  let unitCraftCost = null;
   let avgPercent = null;
   let avgValue = null;
   let ratio = null;
   let netGain = null;
 
   if (count > 0) {
+    const unitCosts = attempts.map(attemptUnitCraftCost).filter((c) => c !== null);
+    if (unitCosts.length > 0) unitCraftCost = unitCosts.reduce((s, c) => s + c, 0) / unitCosts.length;
     avgPercent = attempts.reduce((s, a) => s + a.percent, 0) / count;
     avgValue = attempts.reduce((s, a) => s + attemptValue(a), 0) / count;
     if (unitCraftCost) {
@@ -211,13 +217,10 @@ document.querySelectorAll('[data-cancel]').forEach((btn) => {
 document.getElementById('add-item-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const name = document.getElementById('item-name').value.trim();
-  const craftCost = Number(document.getElementById('item-craft-cost').value);
-  const craftQty = Number(document.getElementById('item-craft-qty').value);
-  if (!name || craftQty <= 0) return;
-  state.data.items.push({ id: uid(), name, craftCost, craftQty });
+  if (!name) return;
+  state.data.items.push({ id: uid(), name });
   saveData();
   e.target.reset();
-  document.getElementById('item-craft-qty').value = 1;
   document.getElementById('add-item-form').classList.add('hidden');
   render();
 });
@@ -399,6 +402,60 @@ function buildRuneRow(prefill) {
   return node;
 }
 
+function buildAttemptForm(itemName, prefillAttempt) {
+  const template = document.getElementById('add-attempt-template');
+  const form = template.content.firstElementChild.cloneNode(true);
+  form.querySelector('.item-name-label').textContent = itemName;
+  form.querySelector('.attempt-form-title').textContent = prefillAttempt ? "Modifier l'essai" : 'Nouvel essai de brisage';
+
+  const rowsContainer = form.querySelector('.attempt-runes-rows');
+
+  if (prefillAttempt) {
+    form.querySelector('.attempt-craft-cost').value = prefillAttempt.craftCost;
+    form.querySelector('.attempt-craft-qty').value = prefillAttempt.craftQty;
+    form.querySelector('.attempt-percent').value = prefillAttempt.percent;
+    if (prefillAttempt.runes.length === 0) {
+      rowsContainer.appendChild(buildRuneRow());
+    } else {
+      prefillAttempt.runes.forEach((r) => rowsContainer.appendChild(buildRuneRow(r)));
+    }
+  } else {
+    rowsContainer.appendChild(buildRuneRow());
+  }
+
+  form.querySelector('.add-rune-row-btn').addEventListener('click', () => {
+    rowsContainer.appendChild(buildRuneRow());
+  });
+
+  return form;
+}
+
+function readAttemptForm(form) {
+  const craftCost = Number(form.querySelector('.attempt-craft-cost').value) || 0;
+  const craftQty = Number(form.querySelector('.attempt-craft-qty').value) || 0;
+  const percent = Number(form.querySelector('.attempt-percent').value);
+  const runes = [...form.querySelectorAll('.rune-row')].map((row) => ({
+    typeId: row.querySelector('.rune-type-select').value,
+    qty: Number(row.querySelector('.rune-qty').value) || 0,
+    price: Number(row.querySelector('.rune-price').value) || 0,
+  })).filter((r) => r.typeId && r.qty > 0);
+  return { craftCost, craftQty, percent, runes };
+}
+
+function insertInlineForm(form, { afterRowSelector, holderClass, colspan, focusSelector }) {
+  const row = document.querySelector(afterRowSelector);
+  const holder = document.createElement('tr');
+  holder.className = holderClass;
+  const td = document.createElement('td');
+  td.colSpan = colspan;
+  td.appendChild(form);
+  holder.appendChild(td);
+  row.after(holder);
+
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  form.querySelector(focusSelector).focus();
+}
+
 function openAddAttemptForm(itemId) {
   closeInlineForms();
   const item = state.data.items.find((i) => i.id === itemId);
@@ -409,56 +466,52 @@ function openAddAttemptForm(itemId) {
     return;
   }
 
-  const template = document.getElementById('add-attempt-template');
-  const form = template.content.firstElementChild.cloneNode(true);
-  form.dataset.itemId = itemId;
-  form.querySelector('.item-name-label').textContent = item.name;
-
-  const rowsContainer = form.querySelector('.attempt-runes-rows');
-  rowsContainer.appendChild(buildRuneRow());
-
-  form.querySelector('.add-rune-row-btn').addEventListener('click', () => {
-    rowsContainer.appendChild(buildRuneRow());
-  });
-
-  form.querySelector('.cancel-btn').addEventListener('click', () => form.remove());
+  const form = buildAttemptForm(item.name);
+  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const percent = Number(form.querySelector('.attempt-percent').value);
-    const runes = [...rowsContainer.querySelectorAll('.rune-row')].map((row) => ({
-      typeId: row.querySelector('.rune-type-select').value,
-      qty: Number(row.querySelector('.rune-qty').value) || 0,
-      price: Number(row.querySelector('.rune-price').value) || 0,
-    })).filter((r) => r.typeId && r.qty > 0);
-
-    state.data.attempts.push({
-      id: uid(),
-      itemId,
-      date: new Date().toISOString(),
-      percent,
-      runes,
-    });
+    const attempt = readAttemptForm(form);
+    state.data.attempts.push({ id: uid(), itemId, date: new Date().toISOString(), ...attempt });
     saveData();
     render();
   });
 
-  // Insert the form right after the item's row in the table
-  const row = document.querySelector(`#items-table-body tr[data-item-id="${itemId}"]`);
-  const holder = document.createElement('tr');
-  holder.className = 'add-attempt-holder';
-  const td = document.createElement('td');
-  td.colSpan = 8;
-  td.appendChild(form);
-  holder.appendChild(td);
-  row.after(holder);
+  insertInlineForm(form, {
+    afterRowSelector: `#items-table-body tr[data-item-id="${itemId}"]`,
+    holderClass: 'add-attempt-holder',
+    colspan: 8,
+    focusSelector: '.attempt-craft-cost',
+  });
+}
 
-  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  form.querySelector('.attempt-percent').focus();
+function openEditAttemptForm(attemptId) {
+  closeInlineForms();
+  const attempt = state.data.attempts.find((a) => a.id === attemptId);
+  if (!attempt) return;
+  const item = state.data.items.find((i) => i.id === attempt.itemId);
+  if (!item) return;
+
+  const form = buildAttemptForm(item.name, attempt);
+  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    Object.assign(attempt, readAttemptForm(form));
+    saveData();
+    render();
+  });
+
+  insertInlineForm(form, {
+    afterRowSelector: `.attempts-table tr[data-attempt-id="${attemptId}"]`,
+    holderClass: 'edit-attempt-holder',
+    colspan: 6,
+    focusSelector: '.attempt-craft-cost',
+  });
 }
 
 function closeInlineForms() {
-  document.querySelectorAll('.add-attempt-holder, .edit-item-holder').forEach((el) => el.remove());
+  document.querySelectorAll('.add-attempt-holder, .edit-item-holder, .edit-attempt-holder').forEach((el) => el.remove());
 }
 
 // ---------- Edit item form ----------
@@ -472,35 +525,24 @@ function openEditItemForm(itemId) {
   const form = template.content.firstElementChild.cloneNode(true);
   form.querySelector('.item-name-label').textContent = item.name;
   form.querySelector('.edit-item-name').value = item.name;
-  form.querySelector('.edit-item-craft-cost').value = item.craftCost;
-  form.querySelector('.edit-item-craft-qty').value = item.craftQty;
 
   form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = form.querySelector('.edit-item-name').value.trim();
-    const craftCost = Number(form.querySelector('.edit-item-craft-cost').value);
-    const craftQty = Number(form.querySelector('.edit-item-craft-qty').value);
-    if (!name || craftQty <= 0) return;
+    if (!name) return;
     item.name = name;
-    item.craftCost = craftCost;
-    item.craftQty = craftQty;
     saveData();
     render();
   });
 
-  const row = document.querySelector(`#items-table-body tr[data-item-id="${itemId}"]`);
-  const holder = document.createElement('tr');
-  holder.className = 'edit-item-holder';
-  const td = document.createElement('td');
-  td.colSpan = 8;
-  td.appendChild(form);
-  holder.appendChild(td);
-  row.after(holder);
-
-  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  form.querySelector('.edit-item-name').focus();
+  insertInlineForm(form, {
+    afterRowSelector: `#items-table-body tr[data-item-id="${itemId}"]`,
+    holderClass: 'edit-item-holder',
+    colspan: 8,
+    focusSelector: '.edit-item-name',
+  });
 }
 
 // ---------- Item detail (attempt history) ----------
@@ -519,7 +561,7 @@ function renderDetail() {
   const attempts = getItemAttempts(item.id).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const rowsHtml = attempts.length === 0
-    ? '<tr><td colspan="4" class="empty-state">Aucun essai enregistré</td></tr>'
+    ? '<tr><td colspan="6" class="empty-state">Aucun essai enregistré</td></tr>'
     : attempts.map((a) => {
       const runesLabel = a.runes.length === 0
         ? '—'
@@ -530,13 +572,18 @@ function renderDetail() {
         }).join(', ');
       const value = attemptValue(a);
       const date = new Date(a.date).toLocaleDateString('fr-FR');
+      const unitCost = attemptUnitCraftCost(a);
       return `
         <tr data-attempt-id="${a.id}">
           <td>${date}</td>
+          <td title="${a.craftCost} K pour ${a.craftQty} objet(s)">${formatKamas(unitCost)}</td>
           <td>${formatPercent(a.percent)}</td>
           <td>${runesLabel}</td>
           <td>${formatKamas(value)}</td>
-          <td><button type="button" class="delete-attempt-btn" data-id="${a.id}">✕</button></td>
+          <td class="row-actions">
+            <button type="button" class="edit-attempt-btn" data-id="${a.id}">Modifier</button>
+            <button type="button" class="delete-attempt-btn" data-id="${a.id}">✕</button>
+          </td>
         </tr>
       `;
     }).join('');
@@ -546,13 +593,16 @@ function renderDetail() {
       <h3>Historique — ${escapeHtml(item.name)}</h3>
       <table class="attempts-table">
         <thead>
-          <tr><th>Date</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur</th><th></th></tr>
+          <tr><th>Date</th><th>Coût craft (unitaire)</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur</th><th></th></tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>
   `;
 
+  container.querySelectorAll('.edit-attempt-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => openEditAttemptForm(e.target.dataset.id));
+  });
   container.querySelectorAll('.delete-attempt-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       const id = e.target.dataset.id;

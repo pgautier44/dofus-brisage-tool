@@ -36,12 +36,7 @@
       <label>Nom de l'objet
         <input type="text" id="item-name" required>
       </label>
-      <label>Coût total du craft (kamas)
-        <input type="number" id="item-craft-cost" min="0" step="1" required>
-      </label>
-      <label>Nombre d'objets craftés pour ce coût
-        <input type="number" id="item-craft-qty" min="1" step="1" value="1" required>
-      </label>
+      <p class="hint">Le coût de craft, le % de brisage et les runes obtenues se renseignent essai par essai (ils peuvent varier d'une fois à l'autre) via "+ Nouvel essai".</p>
       <div class="form-actions">
         <button type="submit" class="primary-btn">Ajouter</button>
         <button type="button" class="cancel-btn" data-cancel="add-item-form">Annuler</button>
@@ -53,7 +48,7 @@
         <thead>
           <tr>
             <th data-sort="name">Objet</th>
-            <th data-sort="unitCraftCost">Prix craft unitaire</th>
+            <th data-sort="unitCraftCost">Prix craft unitaire (moy.)</th>
             <th data-sort="count">Nb essais</th>
             <th data-sort="avgPercent">% moyen brisage</th>
             <th data-sort="avgValue">Gain runes (moyen)</th>
@@ -80,7 +75,13 @@
 
 <template id="add-attempt-template">
   <form class="panel add-attempt-form">
-    <h3>Nouvel essai de brisage — <span class="item-name-label"></span></h3>
+    <h3><span class="attempt-form-title">Nouvel essai de brisage</span> — <span class="item-name-label"></span></h3>
+    <label>Coût total du craft pour cet essai (kamas)
+      <input type="number" class="attempt-craft-cost" min="0" step="1" required>
+    </label>
+    <label>Nombre d'objets craftés pour ce coût
+      <input type="number" class="attempt-craft-qty" min="1" step="1" value="1" required>
+    </label>
     <label>Pourcentage de brisage obtenu (%)
       <input type="number" class="attempt-percent" min="0" max="100" step="0.01" required>
     </label>
@@ -105,15 +106,9 @@
 
 <template id="edit-item-template">
   <form class="panel edit-item-form">
-    <h3>Modifier — <span class="item-name-label"></span></h3>
+    <h3>Renommer — <span class="item-name-label"></span></h3>
     <label>Nom de l'objet
       <input type="text" class="edit-item-name" required>
-    </label>
-    <label>Coût total du craft (kamas)
-      <input type="number" class="edit-item-craft-cost" min="0" step="1" required>
-    </label>
-    <label>Nombre d'objets craftés pour ce coût
-      <input type="number" class="edit-item-craft-qty" min="1" step="1" required>
     </label>
     <div class="form-actions">
       <button type="submit" class="primary-btn">Enregistrer</button>

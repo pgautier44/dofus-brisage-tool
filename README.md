@@ -8,21 +8,28 @@ brisage, et calcul automatique de rentabilité avec code couleur.
 
 - **Types de runes** : déclare chaque type de rune (PA, PM, Vitalité, ...)
   avec son prix courant à l'hôtel de vente, réutilisable pour tous les essais.
-- **Objets** : pour chaque objet, renseigne le coût total de craft et le
-  nombre d'objets obtenus pour ce coût (le prix unitaire est calculé
-  automatiquement).
-- **Essais de brisage** : ajoute un essai par brisage réel, avec le
-  pourcentage obtenu et le détail des runes reçues (type, quantité, prix).
+- **Objets** : un objet n'a qu'un nom. Tout le reste (coût de craft, %
+  de brisage, runes obtenues) se renseigne essai par essai, puisque ces
+  valeurs varient d'une tentative à l'autre (prix des ingrédients qui
+  bouge, brisage crafté en lot, etc.).
+- **Essais de brisage** : ajoute un essai par brisage réel via "+ Nouvel
+  essai", avec le coût total de craft pour cet essai, le nombre d'objets
+  obtenus pour ce coût, le pourcentage de brisage, et le détail des runes
+  reçues (type, quantité, prix). Chaque essai peut aussi être modifié ou
+  supprimé individuellement depuis l'historique ("Détails").
   Les essais s'accumulent et le tableau calcule automatiquement :
+  - le prix de craft unitaire **moyen** (moyenne des coûts unitaires de
+    chaque essai),
   - le pourcentage moyen de brisage,
-  - la valeur moyenne des runes obtenues,
+  - la valeur moyenne des runes obtenues (le gain),
+  - le gain net (valeur des runes − coût de craft unitaire moyen),
   - le ratio valeur obtenue / coût de craft,
   - une étiquette de rentabilité colorée : **Rentable**, **Relativement
     rentable**, **Relativement pas rentable**, **Pas rentable**.
 - **Tri du tableau** : clique sur l'en-tête d'une colonne pour trier
   (cliquer de nouveau inverse l'ordre).
-- **Historique par objet** : bouton "Détails" pour voir/supprimer chaque
-  essai individuel.
+- **Historique par objet** : bouton "Détails" pour voir, modifier ou
+  supprimer chaque essai individuel.
 
 ## Utilisation
 
