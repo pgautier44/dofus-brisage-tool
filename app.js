@@ -235,7 +235,7 @@ function renderItemsTable() {
           <td>${formatKamas(stats.avgValue)}</td>
           <td><span class="badge ${cat.cls}" title="Ratio valeur/coût : ${ratioLabel}">${cat.label}</span></td>
           <td class="row-actions">
-            <button type="button" class="add-attempt-btn" data-id="${item.id}">+ Essai</button>
+            <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
             <button type="button" class="toggle-detail-btn" data-id="${item.id}">Détails</button>
             <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
           </td>
@@ -387,6 +387,9 @@ function openAddAttemptForm(itemId) {
   td.appendChild(form);
   holder.appendChild(td);
   row.after(holder);
+
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  form.querySelector('.attempt-percent').focus();
 }
 
 function closeAddAttemptForm() {
