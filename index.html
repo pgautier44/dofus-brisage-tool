@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outil de Brisage - Dofus</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>🔨 Outil de Brisage — Dofus</h1>
+  <p class="subtitle">Suivi de rentabilité du craft + brisage d'équipements</p>
+</header>
+
+<main>
+
+  <section class="card" id="rune-types-section">
+    <h2>Types de runes</h2>
+    <p class="hint">Ajoute ici chaque type de rune que tu peux obtenir en brisant (PA, PM, Vitalité, ...) avec son prix actuel à l'hôtel de vente.</p>
+    <div id="rune-types-list"></div>
+    <form id="rune-type-form" class="inline-form">
+      <input type="text" id="rune-type-name" placeholder="Nom de la rune (ex: Rune Pa)" required>
+      <input type="number" id="rune-type-price" placeholder="Prix unitaire (kamas)" min="0" step="1" required>
+      <button type="submit">Ajouter une rune</button>
+    </form>
+  </section>
+
+  <section class="card" id="items-section">
+    <div class="section-header">
+      <h2>Objets brisés</h2>
+      <button id="show-add-item-btn" class="primary-btn">+ Nouvel objet</button>
+    </div>
+
+    <form id="add-item-form" class="panel hidden">
+      <h3>Nouvel objet</h3>
+      <label>Nom de l'objet
+        <input type="text" id="item-name" required>
+      </label>
+      <label>Coût total du craft (kamas)
+        <input type="number" id="item-craft-cost" min="0" step="1" required>
+      </label>
+      <label>Nombre d'objets craftés pour ce coût
+        <input type="number" id="item-craft-qty" min="1" step="1" value="1" required>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="primary-btn">Ajouter</button>
+        <button type="button" class="cancel-btn" data-cancel="add-item-form">Annuler</button>
+      </div>
+    </form>
+
+    <div class="table-wrapper">
+      <table id="items-table">
+        <thead>
+          <tr>
+            <th data-sort="name">Objet</th>
+            <th data-sort="unitCraftCost">Prix craft unitaire</th>
+            <th data-sort="count">Nb essais</th>
+            <th data-sort="avgPercent">% moyen brisage</th>
+            <th data-sort="avgValue">Valeur runes moyenne</th>
+            <th data-sort="ratio">Rentabilité</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="items-table-body"></tbody>
+      </table>
+    </div>
+    <p class="hint legend">
+      <span class="badge rentable">Rentable</span>
+      <span class="badge rel-rentable">Relativement rentable</span>
+      <span class="badge rel-pas-rentable">Relativement pas rentable</span>
+      <span class="badge pas-rentable">Pas rentable</span>
+      <span class="badge no-data">Pas assez de données</span>
+    </p>
+  </section>
+
+  <section id="item-detail-container"></section>
+
+</main>
+
+<template id="add-attempt-template">
+  <form class="panel add-attempt-form">
+    <h3>Nouvel essai de brisage — <span class="item-name-label"></span></h3>
+    <label>Pourcentage de brisage obtenu (%)
+      <input type="number" class="attempt-percent" min="0" max="100" step="0.01" required>
+    </label>
+    <h4>Runes obtenues</h4>
+    <div class="attempt-runes-rows"></div>
+    <button type="button" class="secondary-btn add-rune-row-btn">+ Ajouter une rune</button>
+    <div class="form-actions">
+      <button type="submit" class="primary-btn">Enregistrer l'essai</button>
+      <button type="button" class="cancel-btn">Annuler</button>
+    </div>
+  </form>
+</template>
+
+<template id="rune-row-template">
+  <div class="rune-row">
+    <select class="rune-type-select"></select>
+    <input type="number" class="rune-qty" placeholder="Quantité" min="0" step="1" value="1">
+    <input type="number" class="rune-price" placeholder="Prix unitaire" min="0" step="1">
+    <button type="button" class="remove-rune-row-btn" title="Supprimer">✕</button>
+  </div>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>
