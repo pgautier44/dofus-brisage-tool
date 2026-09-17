@@ -13,16 +13,26 @@ function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchRemoteData() {
+  return supabaseClient.from('app_state').select('data').eq('id', 'default').single();
+}
+
 async function loadData() {
-  const { data, error } = await supabaseClient
-    .from('app_state')
-    .select('data')
-    .eq('id', 'default')
-    .single();
+  let { data, error } = await fetchRemoteData();
+
+  if (error) {
+    // A fresh page load can race the browser's network stack — retry once before giving up.
+    await sleep(800);
+    ({ data, error } = await fetchRemoteData());
+  }
 
   if (error) {
     console.error('Impossible de charger les données', error);
-    showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis recharge la page.");
+    showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
     return { runeTypes: [], items: [], attempts: [] };
   }
 
@@ -665,10 +675,65 @@ document.getElementById('refresh-btn').addEventListener('click', async () => {
   btn.disabled = false;
 });
 
+// ---------- Legacy localStorage import (pre-Supabase data left on a browser) ----------
+
+const LEGACY_STORAGE_KEY = 'dofusBrisageData';
+
+function mergeById(baseArr, incomingArr) {
+  const existingIds = new Set(baseArr.map((x) => x.id));
+  return [...baseArr, ...incomingArr.filter((x) => !existingIds.has(x.id))];
+}
+
+function readLegacyData() {
+  try {
+    const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const legacy = {
+      runeTypes: parsed.runeTypes || [],
+      items: parsed.items || [],
+      attempts: parsed.attempts || [],
+    };
+    const hasData = legacy.runeTypes.length || legacy.items.length || legacy.attempts.length;
+    return hasData ? legacy : null;
+  } catch (e) {
+    console.error('Anciennes données locales illisibles', e);
+    return null;
+  }
+}
+
+function checkLegacyData() {
+  if (readLegacyData()) {
+    document.getElementById('legacy-import-banner').classList.remove('hidden');
+  }
+}
+
+document.getElementById('import-legacy-btn').addEventListener('click', async () => {
+  const legacy = readLegacyData();
+  if (!legacy) return;
+  const btn = document.getElementById('import-legacy-btn');
+  btn.disabled = true;
+  state.data = {
+    runeTypes: mergeById(state.data.runeTypes, legacy.runeTypes),
+    items: mergeById(state.data.items, legacy.items),
+    attempts: mergeById(state.data.attempts, legacy.attempts),
+  };
+  await saveData();
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+  document.getElementById('legacy-import-banner').classList.add('hidden');
+  render();
+  btn.disabled = false;
+});
+
+document.getElementById('dismiss-legacy-btn').addEventListener('click', () => {
+  document.getElementById('legacy-import-banner').classList.add('hidden');
+});
+
 async function init() {
   state.data = await loadData();
   render();
   document.body.classList.remove('loading');
+  checkLegacyData();
 }
 
 init();

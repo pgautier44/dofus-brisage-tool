@@ -56,6 +56,9 @@ main {
 
 #items-section { border-top-color: var(--accent); }
 
+.legacy-banner { border-top-color: var(--rel-pas-rentable); background: #fdf3e7; }
+.legacy-banner h2 { margin-bottom: 6px; }
+
 .card h2 { margin-top: 0; }
 
 .hint { color: var(--text-dim); font-size: 0.9rem; }
