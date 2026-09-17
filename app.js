@@ -1,6 +1,5 @@
-// Outil de suivi de rentabilité du brisage - stockage 100% local (localStorage)
-
-const STORAGE_KEY = 'dofusBrisageData';
+// Outil de suivi de rentabilité du brisage - données partagées via Supabase (Postgres),
+// pour être accessibles depuis plusieurs appareils avec le même lien.
 
 const RATIO_THRESHOLDS = {
   rentable: 1.2,
@@ -8,32 +7,42 @@ const RATIO_THRESHOLDS = {
   relPasRentable: 0.8,
 };
 
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { runeTypes: [], items: [], attempts: [] };
-    const parsed = JSON.parse(raw);
-    return {
-      runeTypes: parsed.runeTypes || [],
-      items: parsed.items || [],
-      attempts: parsed.attempts || [],
-    };
-  } catch (e) {
-    console.error('Impossible de lire les données locales', e);
+async function loadData() {
+  const { data, error } = await supabaseClient
+    .from('app_state')
+    .select('data')
+    .eq('id', 'default')
+    .single();
+
+  if (error) {
+    console.error('Impossible de charger les données', error);
+    showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis recharge la page.");
     return { runeTypes: [], items: [], attempts: [] };
   }
+
+  const d = data.data || {};
+  return {
+    runeTypes: d.runeTypes || [],
+    items: d.items || [],
+    attempts: d.attempts || [],
+  };
 }
 
-function saveData() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
-  } catch (e) {
-    console.error('Impossible de sauvegarder les données locales', e);
-    showAlert("Erreur : impossible d'enregistrer les données (stockage local plein ou indisponible).");
+async function saveData() {
+  const { error } = await supabaseClient
+    .from('app_state')
+    .update({ data: state.data, updated_at: new Date().toISOString() })
+    .eq('id', 'default');
+
+  if (error) {
+    console.error('Impossible de sauvegarder les données', error);
+    showAlert("Erreur : impossible d'enregistrer les données sur le serveur. Vérifie ta connexion internet — ce changement n'a pas été sauvegardé.");
   }
 }
 
@@ -80,7 +89,7 @@ function showAlert(message) {
 }
 
 const state = {
-  data: loadData(),
+  data: { runeTypes: [], items: [], attempts: [] },
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
@@ -648,4 +657,18 @@ function render() {
   renderDetail();
 }
 
-render();
+document.getElementById('refresh-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true;
+  state.data = await loadData();
+  render();
+  btn.disabled = false;
+});
+
+async function init() {
+  state.data = await loadData();
+  render();
+  document.body.classList.remove('loading');
+}
+
+init();

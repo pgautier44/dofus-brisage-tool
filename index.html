@@ -6,10 +6,10 @@
 <title>Outil de Brisage - Dofus</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="loading">
 <header>
   <h1>🔨 Outil de Brisage — Dofus</h1>
-  <p class="subtitle">Suivi de rentabilité du craft + brisage d'équipements</p>
+  <p class="subtitle">Suivi de rentabilité du craft + brisage d'équipements — données partagées entre tes appareils</p>
 </header>
 
 <main>
@@ -28,7 +28,10 @@
   <section class="card" id="items-section">
     <div class="section-header">
       <h2>Objets brisés</h2>
-      <button id="show-add-item-btn" class="primary-btn">+ Nouvel objet</button>
+      <div class="section-header-actions">
+        <button id="refresh-btn" class="secondary-btn" title="Recharger les données depuis le serveur (pour voir les changements faits sur un autre PC)">🔄 Actualiser</button>
+        <button id="show-add-item-btn" class="primary-btn">+ Nouvel objet</button>
+      </div>
     </div>
 
     <form id="add-item-form" class="panel hidden">
@@ -129,6 +132,8 @@
   </div>
 </div>
 
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
