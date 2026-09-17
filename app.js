@@ -100,7 +100,7 @@ function showAlert(message) {
 
 const state = {
   data: { runeTypes: [], items: [], attempts: [] },
-  sort: { column: 'netGain', direction: 'desc' },
+  sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
 };
