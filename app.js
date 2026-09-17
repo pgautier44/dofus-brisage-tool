@@ -100,7 +100,7 @@ function showAlert(message) {
 
 const state = {
   data: { runeTypes: [], items: [], attempts: [] },
-  sort: { column: 'ratio', direction: 'desc' },
+  sort: { column: 'netGain', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
 };
@@ -284,14 +284,14 @@ function sortedItems() {
         va = a.stats.avgValue;
         vb = b.stats.avgValue;
         break;
-      case 'netGain':
-        va = a.stats.netGain;
-        vb = b.stats.netGain;
-        break;
       case 'ratio':
-      default:
         va = a.stats.ratio;
         vb = b.stats.ratio;
+        break;
+      case 'netGain':
+      default:
+        va = a.stats.netGain;
+        vb = b.stats.netGain;
         break;
     }
     // Nulls always last regardless of direction
