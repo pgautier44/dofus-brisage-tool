@@ -174,14 +174,13 @@ function renderRuneTypes() {
     return;
   }
   container.innerHTML = '';
-  state.data.runeTypes.forEach((rt, index) => {
+  state.data.runeTypes.forEach((rt) => {
     const row = document.createElement('div');
     row.className = 'rune-type-row';
+    row.draggable = true;
+    row.dataset.id = rt.id;
     row.innerHTML = `
-      <div class="reorder-btns">
-        <button type="button" class="move-rt-btn" data-id="${rt.id}" data-dir="up" title="Monter" ${index === 0 ? 'disabled' : ''}>▲</button>
-        <button type="button" class="move-rt-btn" data-id="${rt.id}" data-dir="down" title="Descendre" ${index === state.data.runeTypes.length - 1 ? 'disabled' : ''}>▼</button>
-      </div>
+      <span class="drag-handle" title="Glisser pour réordonner">⠿</span>
       <span class="rt-name">${escapeHtml(rt.name)}</span>
       <input type="number" min="0" step="1" value="${rt.price}" class="rt-price-input" data-id="${rt.id}">
       <span>kamas</span>
@@ -190,15 +189,40 @@ function renderRuneTypes() {
     container.appendChild(row);
   });
 
-  container.querySelectorAll('.move-rt-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const id = e.target.dataset.id;
-      const dir = e.target.dataset.dir;
-      const index = state.data.runeTypes.findIndex((r) => r.id === id);
-      const swapWith = dir === 'up' ? index - 1 : index + 1;
-      if (swapWith < 0 || swapWith >= state.data.runeTypes.length) return;
+  let draggedId = null;
+
+  container.querySelectorAll('.rune-type-row').forEach((row) => {
+    row.addEventListener('dragstart', (e) => {
+      draggedId = row.dataset.id;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      container.querySelectorAll('.rune-type-row').forEach((r) => r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (row.dataset.id === draggedId) return;
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const targetId = row.dataset.id;
+      if (!draggedId || draggedId === targetId) return;
+
       const arr = state.data.runeTypes;
-      [arr[index], arr[swapWith]] = [arr[swapWith], arr[index]];
+      const fromIndex = arr.findIndex((r) => r.id === draggedId);
+      const toIndex = arr.findIndex((r) => r.id === targetId);
+      const dropBeforeTarget = e.clientY < row.getBoundingClientRect().top + row.offsetHeight / 2;
+
+      const [moved] = arr.splice(fromIndex, 1);
+      let insertAt = arr.findIndex((r) => r.id === targetId);
+      if (!dropBeforeTarget) insertAt += 1;
+      arr.splice(insertAt, 0, moved);
+
       saveData();
       render();
     });

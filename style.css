@@ -275,17 +275,18 @@ tbody tr:hover td.row-actions { background: inherit; }
 .rune-type-row input[type="number"] { width: 130px; }
 .rune-type-row .remove-rt-btn { color: var(--pas-rentable); background: transparent; border: none; }
 
-.reorder-btns { display: flex; flex-direction: column; gap: 2px; }
-.move-rt-btn {
-  padding: 0 6px;
-  line-height: 1.4;
-  font-size: 0.7rem;
-  background: transparent;
-  border: none;
+.drag-handle {
+  cursor: grab;
   color: var(--text-dim);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 2px;
+  user-select: none;
 }
-.move-rt-btn:hover:not(:disabled) { color: var(--accent); border-color: transparent; }
-.move-rt-btn:disabled { opacity: 0.25; cursor: default; }
+.drag-handle:hover { color: var(--accent); }
+
+.rune-type-row.dragging { opacity: 0.4; }
+.rune-type-row.drag-over { border-top: 2px solid var(--accent); }
 
 .rune-row {
   display: flex;
