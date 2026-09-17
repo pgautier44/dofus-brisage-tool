@@ -174,16 +174,34 @@ function renderRuneTypes() {
     return;
   }
   container.innerHTML = '';
-  state.data.runeTypes.forEach((rt) => {
+  state.data.runeTypes.forEach((rt, index) => {
     const row = document.createElement('div');
     row.className = 'rune-type-row';
     row.innerHTML = `
+      <div class="reorder-btns">
+        <button type="button" class="move-rt-btn" data-id="${rt.id}" data-dir="up" title="Monter" ${index === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="move-rt-btn" data-id="${rt.id}" data-dir="down" title="Descendre" ${index === state.data.runeTypes.length - 1 ? 'disabled' : ''}>▼</button>
+      </div>
       <span class="rt-name">${escapeHtml(rt.name)}</span>
       <input type="number" min="0" step="1" value="${rt.price}" class="rt-price-input" data-id="${rt.id}">
       <span>kamas</span>
       <button type="button" class="remove-rt-btn" data-id="${rt.id}">Supprimer</button>
     `;
     container.appendChild(row);
+  });
+
+  container.querySelectorAll('.move-rt-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      const dir = e.target.dataset.dir;
+      const index = state.data.runeTypes.findIndex((r) => r.id === id);
+      const swapWith = dir === 'up' ? index - 1 : index + 1;
+      if (swapWith < 0 || swapWith >= state.data.runeTypes.length) return;
+      const arr = state.data.runeTypes;
+      [arr[index], arr[swapWith]] = [arr[swapWith], arr[index]];
+      saveData();
+      render();
+    });
   });
 
   container.querySelectorAll('.rt-price-input').forEach((input) => {
@@ -224,6 +242,22 @@ document.getElementById('rune-type-form').addEventListener('submit', (e) => {
   saveData();
   e.target.reset();
   render();
+});
+
+// ---------- Tabs ----------
+
+document.querySelectorAll('.tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach((b) => {
+      const isActive = b === btn;
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-selected', String(isActive));
+    });
+    document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+      panel.classList.toggle('hidden', panel.dataset.tabPanel !== tab);
+    });
+  });
 });
 
 // ---------- Items ----------
