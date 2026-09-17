@@ -426,8 +426,12 @@ function buildRuneRow(prefill) {
   if (prefill) {
     select.value = prefill.typeId;
     qtyInput.value = prefill.qty;
-    priceInput.value = prefill.price;
-    priceInput.dataset.touched = '1';
+    if (prefill.price !== undefined) {
+      priceInput.value = prefill.price;
+      priceInput.dataset.touched = '1';
+    } else {
+      syncDefaultPrice();
+    }
   } else {
     syncDefaultPrice();
   }
@@ -437,7 +441,7 @@ function buildRuneRow(prefill) {
   return node;
 }
 
-function buildAttemptForm(itemName, prefillAttempt) {
+function buildAttemptForm(itemName, prefillAttempt, knownRuneTypeIds) {
   const template = document.getElementById('add-attempt-template');
   const form = template.content.firstElementChild.cloneNode(true);
   form.querySelector('.item-name-label').textContent = itemName;
@@ -454,6 +458,10 @@ function buildAttemptForm(itemName, prefillAttempt) {
     } else {
       prefillAttempt.runes.forEach((r) => rowsContainer.appendChild(buildRuneRow(r)));
     }
+  } else if (knownRuneTypeIds && knownRuneTypeIds.length > 0) {
+    // Pré-remplit une ligne par rune déjà obtenue sur de précédents essais de cet objet,
+    // quantité vide par défaut (= aucune obtenue cette fois, sauf si renseignée).
+    knownRuneTypeIds.forEach((typeId) => rowsContainer.appendChild(buildRuneRow({ typeId, qty: '' })));
   } else {
     rowsContainer.appendChild(buildRuneRow());
   }
@@ -463,6 +471,18 @@ function buildAttemptForm(itemName, prefillAttempt) {
   });
 
   return form;
+}
+
+function knownRuneTypeIdsForItem(itemId) {
+  const seen = [];
+  getItemAttempts(itemId).forEach((a) => {
+    a.runes.forEach((r) => {
+      if (!seen.includes(r.typeId) && state.data.runeTypes.some((rt) => rt.id === r.typeId)) {
+        seen.push(r.typeId);
+      }
+    });
+  });
+  return seen;
 }
 
 function readAttemptForm(form) {
@@ -501,7 +521,7 @@ function openAddAttemptForm(itemId) {
     return;
   }
 
-  const form = buildAttemptForm(item.name);
+  const form = buildAttemptForm(item.name, null, knownRuneTypeIdsForItem(itemId));
   form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
 
   form.addEventListener('submit', (e) => {
