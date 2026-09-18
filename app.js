@@ -1135,6 +1135,20 @@ function renderJewelDetail() {
   });
 }
 
+function renderJewelryTotals() {
+  const totalInvested = state.data.jewelSales.reduce((s, e) => s + e.purchasePrice, 0);
+  const totalCollected = state.data.jewelSales.reduce((s, e) => s + (jewelSaleIsSold(e) ? e.salePrice : 0), 0);
+  const net = totalCollected - totalInvested;
+
+  document.getElementById('jewelry-total-invested').textContent = formatKamas(totalInvested);
+  document.getElementById('jewelry-total-collected').textContent = formatKamas(totalCollected);
+
+  const netEl = document.getElementById('jewelry-total-net');
+  netEl.textContent = (net >= 0 ? '+' : '') + formatKamas(net);
+  netEl.classList.remove('gain-positive', 'gain-negative');
+  netEl.classList.add(net >= 0 ? 'gain-positive' : 'gain-negative');
+}
+
 document.getElementById('jewelry-refresh-btn').addEventListener('click', async () => {
   const btn = document.getElementById('jewelry-refresh-btn');
   btn.disabled = true;
@@ -1158,6 +1172,7 @@ function render() {
   renderDetail();
   renderJewelryTable();
   renderJewelDetail();
+  renderJewelryTotals();
 }
 
 document.getElementById('refresh-btn').addEventListener('click', async () => {
