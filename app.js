@@ -33,7 +33,7 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], items: [], attempts: [] };
+    return { runeTypes: [], items: [], attempts: [], jewels: [], jewelSales: [] };
   }
 
   const d = data.data || {};
@@ -41,6 +41,8 @@ async function loadData() {
     runeTypes: d.runeTypes || [],
     items: d.items || [],
     attempts: d.attempts || [],
+    jewels: d.jewels || [],
+    jewelSales: d.jewelSales || [],
   };
 }
 
@@ -99,11 +101,18 @@ function showAlert(message) {
 }
 
 const state = {
-  data: { runeTypes: [], items: [], attempts: [] },
+  data: { runeTypes: [], items: [], attempts: [], jewels: [], jewelSales: [] },
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
+  jewelrySort: { column: 'avgRatio', direction: 'desc' },
+  openJewelDetailId: null,
+  jewelrySearchQuery: '',
 };
+
+function todayISODate() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function formatKamas(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
@@ -624,7 +633,9 @@ function openEditAttemptForm(attemptId) {
 }
 
 function closeInlineForms() {
-  document.querySelectorAll('.add-attempt-holder, .edit-item-holder, .edit-attempt-holder').forEach((el) => el.remove());
+  document.querySelectorAll(
+    '.add-attempt-holder, .edit-item-holder, .edit-attempt-holder, .add-jewel-sale-holder, .edit-jewel-holder, .edit-jewel-sale-holder'
+  ).forEach((el) => el.remove());
 }
 
 // ---------- Edit item form ----------
@@ -730,6 +741,408 @@ function renderDetail() {
   });
 }
 
+// ---------- Jewelry (Bijoutier/Joaillo) ----------
+
+function getJewelSales(jewelId) {
+  return state.data.jewelSales.filter((s) => s.jewelId === jewelId);
+}
+
+function jewelSaleIsSold(sale) {
+  return sale.salePrice !== null && sale.salePrice !== undefined && !!sale.saleDate;
+}
+
+function jewelSaleDelay(sale) {
+  if (!jewelSaleIsSold(sale)) return null;
+  const ms = new Date(sale.saleDate) - new Date(sale.listedDate);
+  return Math.round(ms / 86400000);
+}
+
+function jewelSaleGain(sale) {
+  if (!jewelSaleIsSold(sale)) return null;
+  return sale.salePrice - sale.purchasePrice;
+}
+
+function computeJewelStats(jewel) {
+  const sales = getJewelSales(jewel.id);
+  const count = sales.length;
+  const soldSales = sales.filter(jewelSaleIsSold);
+  const soldCount = soldSales.length;
+
+  let avgPurchasePrice = null;
+  let avgDelay = null;
+  let avgGain = null;
+  let avgRatio = null;
+
+  if (count > 0) {
+    avgPurchasePrice = sales.reduce((s, e) => s + e.purchasePrice, 0) / count;
+  }
+  if (soldCount > 0) {
+    const totalPurchase = soldSales.reduce((s, e) => s + e.purchasePrice, 0);
+    const totalSale = soldSales.reduce((s, e) => s + e.salePrice, 0);
+    avgGain = (totalSale - totalPurchase) / soldCount;
+    avgDelay = soldSales.reduce((s, e) => s + jewelSaleDelay(e), 0) / soldCount;
+    avgRatio = totalPurchase > 0 ? totalSale / totalPurchase : null;
+  }
+
+  return { count, soldCount, avgPurchasePrice, avgDelay, avgGain, avgRatio };
+}
+
+function classifyJewelRatio(ratio) {
+  if (ratio === null || ratio === undefined) return { label: 'Pas assez de données', cls: 'no-data' };
+  if (ratio >= 1) return { label: 'Rentable', cls: 'rentable' };
+  return { label: 'Pas rentable', cls: 'pas-rentable' };
+}
+
+document.getElementById('show-add-jewel-btn').addEventListener('click', () => {
+  document.getElementById('add-jewel-form').classList.toggle('hidden');
+  document.getElementById('jewel-listed-date').value = todayISODate();
+});
+
+document.getElementById('jewel-search').addEventListener('input', (e) => {
+  state.jewelrySearchQuery = e.target.value.trim().toLowerCase();
+  renderJewelryTable();
+});
+
+document.getElementById('add-jewel-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.getElementById('jewel-name').value.trim();
+  const purchasePrice = Number(document.getElementById('jewel-purchase-price').value) || 0;
+  const listedDate = document.getElementById('jewel-listed-date').value;
+  if (!name || !listedDate) return;
+  const jewelId = uid();
+  state.data.jewels.push({ id: jewelId, name });
+  state.data.jewelSales.push({
+    id: uid(), jewelId, purchasePrice, listedDate, salePrice: null, saleDate: null,
+  });
+  saveData();
+  e.target.reset();
+  document.getElementById('add-jewel-form').classList.add('hidden');
+  render();
+});
+
+function sortedJewels() {
+  const { column, direction } = state.jewelrySort;
+  const jewels = state.jewelrySearchQuery
+    ? state.data.jewels.filter((j) => j.name.toLowerCase().includes(state.jewelrySearchQuery))
+    : state.data.jewels;
+  const rows = jewels.map((jewel) => ({ jewel, stats: computeJewelStats(jewel) }));
+
+  rows.sort((a, b) => {
+    let va, vb;
+    switch (column) {
+      case 'name':
+        va = a.jewel.name.toLowerCase();
+        vb = b.jewel.name.toLowerCase();
+        break;
+      case 'avgPurchasePrice':
+        va = a.stats.avgPurchasePrice;
+        vb = b.stats.avgPurchasePrice;
+        break;
+      case 'count':
+        va = a.stats.count;
+        vb = b.stats.count;
+        break;
+      case 'avgDelay':
+        va = a.stats.avgDelay;
+        vb = b.stats.avgDelay;
+        break;
+      case 'avgGain':
+        va = a.stats.avgGain;
+        vb = b.stats.avgGain;
+        break;
+      case 'avgRatio':
+      default:
+        va = a.stats.avgRatio;
+        vb = b.stats.avgRatio;
+        break;
+    }
+    if (va === null || va === undefined) return 1;
+    if (vb === null || vb === undefined) return -1;
+    if (va < vb) return direction === 'asc' ? -1 : 1;
+    if (va > vb) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  return rows;
+}
+
+function renderJewelryTable() {
+  const tbody = document.getElementById('jewelry-table-body');
+  const rows = sortedJewels();
+
+  if (rows.length === 0) {
+    const message = state.jewelrySearchQuery
+      ? `Aucun bijou ne correspond à "${escapeHtml(state.jewelrySearchQuery)}".`
+      : 'Aucun bijou pour le moment. Ajoute-en un avec "+ Nouveau bijou".';
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${message}</td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map(({ jewel, stats }) => {
+      const cat = classifyJewelRatio(stats.avgRatio);
+      const ratioLabel = stats.avgRatio !== null ? formatPercent(stats.avgRatio * 100, 0) : '—';
+      const gainCls = stats.avgGain === null ? '' : stats.avgGain >= 0 ? 'gain-positive' : 'gain-negative';
+      const gainLabel = stats.avgGain === null ? '—' : (stats.avgGain >= 0 ? '+' : '') + formatKamas(stats.avgGain);
+      const delayLabel = stats.avgDelay === null ? '—' : Math.round(stats.avgDelay) + ' j';
+      return `
+        <tr data-jewel-id="${jewel.id}">
+          <td>${escapeHtml(jewel.name)}</td>
+          <td>${formatKamas(stats.avgPurchasePrice)}</td>
+          <td>${stats.count}</td>
+          <td>${delayLabel}</td>
+          <td class="${gainCls}">${gainLabel}</td>
+          <td>
+            <span class="badge ${cat.cls}">${cat.label}</span>
+            <div class="ratio-note">${stats.avgRatio !== null ? ratioLabel + " du prix d'achat" : ''}</div>
+          </td>
+          <td class="row-actions">
+            <button type="button" class="add-jewel-sale-btn primary-btn" data-id="${jewel.id}">+ Nouvel achat</button>
+            <button type="button" class="edit-jewel-btn" data-id="${jewel.id}">Renommer</button>
+            <button type="button" class="toggle-jewel-detail-btn" data-id="${jewel.id}">Détails</button>
+            <button type="button" class="delete-jewel-btn" data-id="${jewel.id}">Supprimer</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  tbody.querySelectorAll('.add-jewel-sale-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => openAddJewelSaleForm(e.target.dataset.id));
+  });
+  tbody.querySelectorAll('.edit-jewel-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => openEditJewelForm(e.target.dataset.id));
+  });
+  tbody.querySelectorAll('.toggle-jewel-detail-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      state.openJewelDetailId = state.openJewelDetailId === id ? null : id;
+      renderJewelDetail();
+    });
+  });
+  tbody.querySelectorAll('.delete-jewel-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.dataset.id;
+      const jewel = state.data.jewels.find((j) => j.id === id);
+      const ok = await showConfirm(`Supprimer "${jewel.name}" et tous ses achats associés ?`, { danger: true });
+      if (!ok) return;
+      state.data.jewels = state.data.jewels.filter((j) => j.id !== id);
+      state.data.jewelSales = state.data.jewelSales.filter((s) => s.jewelId !== id);
+      if (state.openJewelDetailId === id) state.openJewelDetailId = null;
+      saveData();
+      render();
+    });
+  });
+
+  updateJewelrySortHeaders();
+}
+
+function updateJewelrySortHeaders() {
+  document.querySelectorAll('#jewelry-table th[data-sort]').forEach((th) => {
+    th.classList.remove('sorted');
+    th.removeAttribute('data-arrow');
+    if (th.dataset.sort === state.jewelrySort.column) {
+      th.classList.add('sorted');
+      th.setAttribute('data-arrow', state.jewelrySort.direction === 'asc' ? '▲' : '▼');
+    }
+  });
+}
+
+document.querySelectorAll('#jewelry-table th[data-sort]').forEach((th) => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.sort;
+    if (state.jewelrySort.column === col) {
+      state.jewelrySort.direction = state.jewelrySort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      state.jewelrySort.column = col;
+      state.jewelrySort.direction = col === 'name' ? 'asc' : 'desc';
+    }
+    renderJewelryTable();
+  });
+});
+
+function buildJewelSaleForm(jewelName, prefillSale) {
+  const template = document.getElementById('jewel-entry-template');
+  const form = template.content.firstElementChild.cloneNode(true);
+  form.querySelector('.jewel-name-label').textContent = jewelName;
+  form.querySelector('.jewel-entry-form-title').textContent = prefillSale ? "Modifier l'achat" : 'Nouvel achat';
+
+  if (prefillSale) {
+    form.querySelector('.jewel-purchase-price').value = prefillSale.purchasePrice;
+    form.querySelector('.jewel-listed-date').value = prefillSale.listedDate;
+    if (prefillSale.salePrice !== null && prefillSale.salePrice !== undefined) {
+      form.querySelector('.jewel-sale-price').value = prefillSale.salePrice;
+    }
+    if (prefillSale.saleDate) form.querySelector('.jewel-sale-date').value = prefillSale.saleDate;
+  } else {
+    form.querySelector('.jewel-listed-date').value = todayISODate();
+  }
+
+  return form;
+}
+
+function readJewelSaleForm(form) {
+  const purchasePrice = Number(form.querySelector('.jewel-purchase-price').value) || 0;
+  const listedDate = form.querySelector('.jewel-listed-date').value;
+  const salePriceRaw = form.querySelector('.jewel-sale-price').value;
+  const saleDateRaw = form.querySelector('.jewel-sale-date').value;
+  return {
+    purchasePrice,
+    listedDate,
+    salePrice: salePriceRaw === '' ? null : Number(salePriceRaw),
+    saleDate: saleDateRaw === '' ? null : saleDateRaw,
+  };
+}
+
+function openAddJewelSaleForm(jewelId) {
+  closeInlineForms();
+  const jewel = state.data.jewels.find((j) => j.id === jewelId);
+  if (!jewel) return;
+
+  const form = buildJewelSaleForm(jewel.name);
+  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const sale = readJewelSaleForm(form);
+    state.data.jewelSales.push({ id: uid(), jewelId, ...sale });
+    saveData();
+    render();
+  });
+
+  insertInlineForm(form, {
+    afterRowSelector: `#jewelry-table-body tr[data-jewel-id="${jewelId}"]`,
+    holderClass: 'add-jewel-sale-holder',
+    colspan: 7,
+    focusSelector: '.jewel-purchase-price',
+  });
+}
+
+function openEditJewelSaleForm(saleId) {
+  closeInlineForms();
+  const sale = state.data.jewelSales.find((s) => s.id === saleId);
+  if (!sale) return;
+  const jewel = state.data.jewels.find((j) => j.id === sale.jewelId);
+  if (!jewel) return;
+
+  const form = buildJewelSaleForm(jewel.name, sale);
+  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    Object.assign(sale, readJewelSaleForm(form));
+    saveData();
+    render();
+  });
+
+  insertInlineForm(form, {
+    afterRowSelector: `.jewel-sales-table tr[data-sale-id="${saleId}"]`,
+    holderClass: 'edit-jewel-sale-holder',
+    colspan: 8,
+    focusSelector: '.jewel-purchase-price',
+  });
+}
+
+function openEditJewelForm(jewelId) {
+  closeInlineForms();
+  const jewel = state.data.jewels.find((j) => j.id === jewelId);
+  if (!jewel) return;
+
+  const template = document.getElementById('edit-jewel-template');
+  const form = template.content.firstElementChild.cloneNode(true);
+  form.querySelector('.jewel-name-label').textContent = jewel.name;
+  form.querySelector('.edit-jewel-name').value = jewel.name;
+
+  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = form.querySelector('.edit-jewel-name').value.trim();
+    if (!name) return;
+    jewel.name = name;
+    saveData();
+    render();
+  });
+
+  insertInlineForm(form, {
+    afterRowSelector: `#jewelry-table-body tr[data-jewel-id="${jewelId}"]`,
+    holderClass: 'edit-jewel-holder',
+    colspan: 7,
+    focusSelector: '.edit-jewel-name',
+  });
+}
+
+function renderJewelDetail() {
+  const container = document.getElementById('jewel-detail-container');
+  if (!state.openJewelDetailId) {
+    container.innerHTML = '';
+    return;
+  }
+  const jewel = state.data.jewels.find((j) => j.id === state.openJewelDetailId);
+  if (!jewel) {
+    container.innerHTML = '';
+    return;
+  }
+  const sales = getJewelSales(jewel.id).slice().sort((a, b) => new Date(b.listedDate) - new Date(a.listedDate));
+
+  const rowsHtml = sales.length === 0
+    ? '<tr><td colspan="8" class="empty-state">Aucun achat enregistré</td></tr>'
+    : sales.map((s) => {
+      const sold = jewelSaleIsSold(s);
+      const gain = jewelSaleGain(s);
+      const delay = jewelSaleDelay(s);
+      const gainCls = gain === null ? '' : gain >= 0 ? 'gain-positive' : 'gain-negative';
+      const gainLabel = gain === null ? '—' : (gain >= 0 ? '+' : '') + formatKamas(gain);
+      const statusBadge = sold
+        ? '<span class="badge rentable">Vendu</span>'
+        : '<span class="badge no-data">En vente</span>';
+      return `
+        <tr data-sale-id="${s.id}">
+          <td>${new Date(s.listedDate).toLocaleDateString('fr-FR')}</td>
+          <td>${formatKamas(s.purchasePrice)}</td>
+          <td>${statusBadge}</td>
+          <td>${s.saleDate ? new Date(s.saleDate).toLocaleDateString('fr-FR') : '—'}</td>
+          <td>${sold ? formatKamas(s.salePrice) : '—'}</td>
+          <td>${delay === null ? '—' : delay + ' j'}</td>
+          <td class="${gainCls}">${gainLabel}</td>
+          <td class="row-actions">
+            <button type="button" class="edit-jewel-sale-btn" data-id="${s.id}">Modifier</button>
+            <button type="button" class="delete-jewel-sale-btn" data-id="${s.id}">✕</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  container.innerHTML = `
+    <div class="detail-panel">
+      <h3>Historique — ${escapeHtml(jewel.name)}</h3>
+      <table class="attempts-table jewel-sales-table">
+        <thead>
+          <tr><th>Mise en vente</th><th>Prix d'achat</th><th>Statut</th><th>Date de vente</th><th>Prix de vente</th><th>Délai</th><th>Gain</th><th class="actions-col"></th></tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+
+  container.querySelectorAll('.edit-jewel-sale-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => openEditJewelSaleForm(e.target.dataset.id));
+  });
+  container.querySelectorAll('.delete-jewel-sale-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      state.data.jewelSales = state.data.jewelSales.filter((s) => s.id !== id);
+      saveData();
+      render();
+    });
+  });
+}
+
+document.getElementById('jewelry-refresh-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('jewelry-refresh-btn');
+  btn.disabled = true;
+  state.data = await loadData();
+  render();
+  btn.disabled = false;
+});
+
 // ---------- Utils ----------
 
 function escapeHtml(str) {
@@ -743,6 +1156,8 @@ function render() {
   closeInlineForms();
   renderItemsTable();
   renderDetail();
+  renderJewelryTable();
+  renderJewelDetail();
 }
 
 document.getElementById('refresh-btn').addEventListener('click', async () => {

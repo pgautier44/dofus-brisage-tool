@@ -16,6 +16,7 @@
 
   <div class="tabs" role="tablist">
     <button type="button" class="tab-btn active" data-tab="items" role="tab" aria-selected="true">Rune Pa</button>
+    <button type="button" class="tab-btn" data-tab="jewelry" role="tab" aria-selected="false">Bijoutier/Joaillo</button>
     <button type="button" class="tab-btn" data-tab="runes" role="tab" aria-selected="false">Types de runes</button>
   </div>
 
@@ -90,6 +91,59 @@
 
   <section id="item-detail-container" data-tab-panel="items"></section>
 
+  <section class="card hidden" id="jewelry-section" data-tab-panel="jewelry">
+    <div class="section-header">
+      <h2>Bijoutier/Joaillo</h2>
+      <div class="section-header-actions">
+        <button id="jewelry-refresh-btn" class="secondary-btn" title="Recharger les données depuis le serveur (pour voir les changements faits sur un autre PC)">🔄 Actualiser</button>
+        <button id="show-add-jewel-btn" class="primary-btn">+ Nouveau bijou</button>
+      </div>
+    </div>
+
+    <form id="add-jewel-form" class="panel hidden">
+      <h3>Nouveau bijou</h3>
+      <label>Nom du bijou
+        <input type="text" id="jewel-name" required>
+      </label>
+      <label>Prix d'achat (kamas)
+        <input type="number" id="jewel-purchase-price" min="0" step="1" required>
+      </label>
+      <label>Date de mise en vente
+        <input type="date" id="jewel-listed-date" required>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="primary-btn">Ajouter</button>
+        <button type="button" class="cancel-btn" data-cancel="add-jewel-form">Annuler</button>
+      </div>
+    </form>
+
+    <input type="search" id="jewel-search" class="search-input" placeholder="Rechercher un bijou...">
+
+    <div class="table-wrapper">
+      <table id="jewelry-table">
+        <thead>
+          <tr>
+            <th data-sort="name">Bijou</th>
+            <th data-sort="avgPurchasePrice">Prix d'achat (moy.)</th>
+            <th data-sort="count">Nb itérations</th>
+            <th data-sort="avgDelay">Délai moyen</th>
+            <th data-sort="avgGain">Gain moyen</th>
+            <th data-sort="avgRatio">Rentabilité</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="jewelry-table-body"></tbody>
+      </table>
+    </div>
+    <p class="hint legend">
+      <span class="badge rentable">Rentable</span>
+      <span class="badge pas-rentable">Pas rentable</span>
+      <span class="badge no-data">Pas assez de données (rien de vendu)</span>
+    </p>
+  </section>
+
+  <section id="jewel-detail-container" data-tab-panel="jewelry"></section>
+
 </main>
 
 <template id="add-attempt-template">
@@ -128,6 +182,41 @@
     <h3>Renommer — <span class="item-name-label"></span></h3>
     <label>Nom de l'objet
       <input type="text" class="edit-item-name" required>
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="primary-btn">Enregistrer</button>
+      <button type="button" class="cancel-btn">Annuler</button>
+    </div>
+  </form>
+</template>
+
+<template id="jewel-entry-template">
+  <form class="panel jewel-entry-form">
+    <h3><span class="jewel-entry-form-title">Nouvel achat</span> — <span class="jewel-name-label"></span></h3>
+    <label>Prix d'achat (kamas)
+      <input type="number" class="jewel-purchase-price" min="0" step="1" required>
+    </label>
+    <label>Date de mise en vente
+      <input type="date" class="jewel-listed-date" required>
+    </label>
+    <label>Prix de vente (kamas) — laisse vide tant que non vendu
+      <input type="number" class="jewel-sale-price" min="0" step="1">
+    </label>
+    <label>Date de vente
+      <input type="date" class="jewel-sale-date">
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="primary-btn">Enregistrer</button>
+      <button type="button" class="cancel-btn">Annuler</button>
+    </div>
+  </form>
+</template>
+
+<template id="edit-jewel-template">
+  <form class="panel edit-jewel-form">
+    <h3>Renommer — <span class="jewel-name-label"></span></h3>
+    <label>Nom du bijou
+      <input type="text" class="edit-jewel-name" required>
     </label>
     <div class="form-actions">
       <button type="submit" class="primary-btn">Enregistrer</button>
