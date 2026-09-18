@@ -170,7 +170,10 @@ input, select {
 }
 .panel h3, .panel h4 { margin: 0; }
 
-.add-attempt-holder td, .edit-item-holder td, .edit-attempt-holder td { padding: 0; border-bottom: none; }
+.add-attempt-holder td, .edit-item-holder td, .edit-attempt-holder td,
+.add-jewel-sale-holder td, .edit-jewel-holder td, .edit-jewel-sale-holder td,
+.detail-row td { padding: 0; border-bottom: none; }
+.detail-row .detail-panel { margin: 10px 0; }
 .add-attempt-form, .edit-item-form {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(43, 36, 24, 0.15);

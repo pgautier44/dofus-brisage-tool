@@ -406,6 +406,7 @@ function renderItemsTable() {
             <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
           </td>
         </tr>
+        ${buildItemDetailRowHtml(item)}
       `;
     }).join('');
   }
@@ -420,7 +421,18 @@ function renderItemsTable() {
     btn.addEventListener('click', (e) => {
       const id = e.target.dataset.id;
       state.openDetailItemId = state.openDetailItemId === id ? null : id;
-      renderDetail();
+      renderItemsTable();
+    });
+  });
+  tbody.querySelectorAll('.edit-attempt-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => openEditAttemptForm(e.target.dataset.id));
+  });
+  tbody.querySelectorAll('.delete-attempt-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      state.data.attempts = state.data.attempts.filter((a) => a.id !== id);
+      saveData();
+      render();
     });
   });
   tbody.querySelectorAll('.delete-item-btn').forEach((btn) => {
@@ -671,17 +683,9 @@ function openEditItemForm(itemId) {
 
 // ---------- Item detail (attempt history) ----------
 
-function renderDetail() {
-  const container = document.getElementById('item-detail-container');
-  if (!state.openDetailItemId) {
-    container.innerHTML = '';
-    return;
-  }
-  const item = state.data.items.find((i) => i.id === state.openDetailItemId);
-  if (!item) {
-    container.innerHTML = '';
-    return;
-  }
+function buildItemDetailRowHtml(item) {
+  if (state.openDetailItemId !== item.id) return '';
+
   const attempts = getItemAttempts(item.id).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const rowsHtml = attempts.length === 0
@@ -716,29 +720,21 @@ function renderDetail() {
       `;
     }).join('');
 
-  container.innerHTML = `
-    <div class="detail-panel">
-      <h3>Historique — ${escapeHtml(item.name)}</h3>
-      <table class="attempts-table">
-        <thead>
-          <tr><th>Date</th><th>Coût craft (série)</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur runes</th><th>Résultat</th><th class="actions-col"></th></tr>
-        </thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-    </div>
+  return `
+    <tr class="detail-row">
+      <td colspan="8">
+        <div class="detail-panel">
+          <h3>Historique — ${escapeHtml(item.name)}</h3>
+          <table class="attempts-table">
+            <thead>
+              <tr><th>Date</th><th>Coût craft (série)</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur runes</th><th>Résultat</th><th class="actions-col"></th></tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      </td>
+    </tr>
   `;
-
-  container.querySelectorAll('.edit-attempt-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openEditAttemptForm(e.target.dataset.id));
-  });
-  container.querySelectorAll('.delete-attempt-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const id = e.target.dataset.id;
-      state.data.attempts = state.data.attempts.filter((a) => a.id !== id);
-      saveData();
-      render();
-    });
-  });
 }
 
 // ---------- Jewelry (Bijoutier/Joaillo) ----------
@@ -900,6 +896,7 @@ function renderJewelryTable() {
             <button type="button" class="delete-jewel-btn" data-id="${jewel.id}">Supprimer</button>
           </td>
         </tr>
+        ${buildJewelDetailRowHtml(jewel)}
       `;
     }).join('');
   }
@@ -914,7 +911,18 @@ function renderJewelryTable() {
     btn.addEventListener('click', (e) => {
       const id = e.target.dataset.id;
       state.openJewelDetailId = state.openJewelDetailId === id ? null : id;
-      renderJewelDetail();
+      renderJewelryTable();
+    });
+  });
+  tbody.querySelectorAll('.edit-jewel-sale-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => openEditJewelSaleForm(e.target.dataset.id));
+  });
+  tbody.querySelectorAll('.delete-jewel-sale-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      state.data.jewelSales = state.data.jewelSales.filter((s) => s.id !== id);
+      saveData();
+      render();
     });
   });
   tbody.querySelectorAll('.delete-jewel-btn').forEach((btn) => {
@@ -970,7 +978,6 @@ function buildJewelSaleForm(jewelName, prefillSale) {
     if (prefillSale.salePrice !== null && prefillSale.salePrice !== undefined) {
       form.querySelector('.jewel-sale-price').value = prefillSale.salePrice;
     }
-    if (prefillSale.saleDate) form.querySelector('.jewel-sale-date').value = prefillSale.saleDate;
   } else {
     form.querySelector('.jewel-listed-date').value = todayISODate();
   }
@@ -978,17 +985,16 @@ function buildJewelSaleForm(jewelName, prefillSale) {
   return form;
 }
 
-function readJewelSaleForm(form) {
+// La date de vente n'est jamais saisie : elle passe à aujourd'hui dès qu'un prix de
+// vente est renseigné pour la première fois, et reste figée ensuite (on ne la remet
+// pas à jour si on corrige juste le prix d'une vente déjà enregistrée).
+function readJewelSaleForm(form, existingSale) {
   const purchasePrice = Number(form.querySelector('.jewel-purchase-price').value) || 0;
   const listedDate = form.querySelector('.jewel-listed-date').value;
   const salePriceRaw = form.querySelector('.jewel-sale-price').value;
-  const saleDateRaw = form.querySelector('.jewel-sale-date').value;
-  return {
-    purchasePrice,
-    listedDate,
-    salePrice: salePriceRaw === '' ? null : Number(salePriceRaw),
-    saleDate: saleDateRaw === '' ? null : saleDateRaw,
-  };
+  const salePrice = salePriceRaw === '' ? null : Number(salePriceRaw);
+  const saleDate = salePrice === null ? null : (existingSale && existingSale.saleDate) || todayISODate();
+  return { purchasePrice, listedDate, salePrice, saleDate };
 }
 
 function openAddJewelSaleForm(jewelId) {
@@ -1027,7 +1033,7 @@ function openEditJewelSaleForm(saleId) {
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    Object.assign(sale, readJewelSaleForm(form));
+    Object.assign(sale, readJewelSaleForm(form, sale));
     saveData();
     render();
   });
@@ -1069,17 +1075,9 @@ function openEditJewelForm(jewelId) {
   });
 }
 
-function renderJewelDetail() {
-  const container = document.getElementById('jewel-detail-container');
-  if (!state.openJewelDetailId) {
-    container.innerHTML = '';
-    return;
-  }
-  const jewel = state.data.jewels.find((j) => j.id === state.openJewelDetailId);
-  if (!jewel) {
-    container.innerHTML = '';
-    return;
-  }
+function buildJewelDetailRowHtml(jewel) {
+  if (state.openJewelDetailId !== jewel.id) return '';
+
   const sales = getJewelSales(jewel.id).slice().sort((a, b) => new Date(b.listedDate) - new Date(a.listedDate));
 
   const rowsHtml = sales.length === 0
@@ -1110,29 +1108,21 @@ function renderJewelDetail() {
       `;
     }).join('');
 
-  container.innerHTML = `
-    <div class="detail-panel">
-      <h3>Historique — ${escapeHtml(jewel.name)}</h3>
-      <table class="attempts-table jewel-sales-table">
-        <thead>
-          <tr><th>Mise en vente</th><th>Prix d'achat</th><th>Statut</th><th>Date de vente</th><th>Prix de vente</th><th>Délai</th><th>Gain</th><th class="actions-col"></th></tr>
-        </thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-    </div>
+  return `
+    <tr class="detail-row">
+      <td colspan="7">
+        <div class="detail-panel">
+          <h3>Historique — ${escapeHtml(jewel.name)}</h3>
+          <table class="attempts-table jewel-sales-table">
+            <thead>
+              <tr><th>Mise en vente</th><th>Prix d'achat</th><th>Statut</th><th>Date de vente</th><th>Prix de vente</th><th>Délai</th><th>Gain</th><th class="actions-col"></th></tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      </td>
+    </tr>
   `;
-
-  container.querySelectorAll('.edit-jewel-sale-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openEditJewelSaleForm(e.target.dataset.id));
-  });
-  container.querySelectorAll('.delete-jewel-sale-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const id = e.target.dataset.id;
-      state.data.jewelSales = state.data.jewelSales.filter((s) => s.id !== id);
-      saveData();
-      render();
-    });
-  });
 }
 
 function renderJewelryTotals() {
@@ -1169,9 +1159,7 @@ function render() {
   renderRuneTypes();
   closeInlineForms();
   renderItemsTable();
-  renderDetail();
   renderJewelryTable();
-  renderJewelDetail();
   renderJewelryTotals();
 }
 
