@@ -878,9 +878,15 @@ function renderJewelryTable() {
       const gainCls = stats.avgGain === null ? '' : stats.avgGain >= 0 ? 'gain-positive' : 'gain-negative';
       const gainLabel = stats.avgGain === null ? '—' : (stats.avgGain >= 0 ? '+' : '') + formatKamas(stats.avgGain);
       const delayLabel = stats.avgDelay === null ? '—' : Math.round(stats.avgDelay) + ' j';
+      // Tout est vendu (aucun bijou actuellement en vente) et le rendement est positif :
+      // bon candidat pour relancer un achat.
+      const isOpportunity = stats.count > 0 && stats.soldCount === stats.count && stats.avgRatio !== null && stats.avgRatio >= 1;
+      const opportunityIcon = isOpportunity
+        ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
+        : '';
       return `
-        <tr data-jewel-id="${jewel.id}">
-          <td>${escapeHtml(jewel.name)}</td>
+        <tr data-jewel-id="${jewel.id}" class="${isOpportunity ? 'jewel-row-opportunity' : ''}">
+          <td>${opportunityIcon}${escapeHtml(jewel.name)}</td>
           <td>${formatKamas(stats.avgPurchasePrice)}</td>
           <td>${stats.count}</td>
           <td>${delayLabel}</td>

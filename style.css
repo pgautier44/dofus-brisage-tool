@@ -270,6 +270,10 @@ tbody tr:hover { background: var(--row-hover); }
 tbody tr:nth-child(even) td.row-actions,
 tbody tr:hover td.row-actions { background: inherit; }
 
+#jewelry-table-body tr.jewel-row-opportunity { background: #e6f6e0; }
+#jewelry-table-body tr.jewel-row-opportunity:hover { background: #d7efce; }
+#jewelry-table-body tr.jewel-row-opportunity td.row-actions { background: inherit; }
+
 .badge {
   display: inline-block;
   padding: 4px 10px;
