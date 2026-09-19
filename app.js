@@ -693,6 +693,22 @@ function createCraftPage(cfg) {
     });
 
     updateSortHeadersGeneric(cfg.tableId, sort());
+    renderTotals();
+  }
+
+  function renderTotals() {
+    const atts = attemptsArr();
+    const totalCost = atts.reduce((s, a) => s + a.craftCost, 0);
+    const totalValue = atts.reduce((s, a) => s + attemptValue(a), 0);
+    const net = totalValue - totalCost;
+
+    document.getElementById(cfg.totalCostElId).textContent = formatKamas(totalCost);
+    document.getElementById(cfg.totalValueElId).textContent = formatKamas(totalValue);
+
+    const netEl = document.getElementById(cfg.totalNetElId);
+    netEl.textContent = (net >= 0 ? '+' : '') + formatKamas(net);
+    netEl.classList.remove('gain-positive', 'gain-negative');
+    netEl.classList.add(net >= 0 ? 'gain-positive' : 'gain-negative');
   }
 
   document.getElementById(cfg.showAddItemBtnId).addEventListener('click', () => {
@@ -753,6 +769,9 @@ const runePaPage = createCraftPage({
   showAddItemBtnId: 'show-add-item-btn',
   searchInputId: 'item-search',
   refreshBtnId: 'refresh-btn',
+  totalCostElId: 'items-total-cost',
+  totalValueElId: 'items-total-value',
+  totalNetElId: 'items-total-net',
 });
 
 const sculpteurPage = createCraftPage({
@@ -768,6 +787,9 @@ const sculpteurPage = createCraftPage({
   showAddItemBtnId: 'show-add-sculptor-item-btn',
   searchInputId: 'sculptor-search',
   refreshBtnId: 'sculptor-refresh-btn',
+  totalCostElId: 'sculptor-total-cost',
+  totalValueElId: 'sculptor-total-value',
+  totalNetElId: 'sculptor-total-net',
 });
 
 // ---------- Add attempt form ----------
