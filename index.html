@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20260919">
+<link rel="stylesheet" href="style.css?v=20260919b">
 </head>
 <body class="loading">
 <header>
@@ -47,6 +47,10 @@
       <input type="text" id="rune-category-name" placeholder="Nom de la catégorie" required>
       <button type="submit">Ajouter une catégorie</button>
     </form>
+
+    <h3>Combinaisons de runes</h3>
+    <p class="hint">Pour chaque rune, renseigne le prix de vente combiné x3 (regroupement de 3) et x9 (regroupement de 9) si tu les connais. Quand tu rentres des runes obtenues sur un essai, la valeur retenue combine automatiquement le plus de x9 possible, puis le plus de x3 possible sur le reste, puis le prix unitaire pour ce qu'il reste.</p>
+    <div id="rune-combos-list"></div>
   </section>
 
   <section class="card" id="items-section" data-tab-panel="items">
@@ -333,6 +337,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260919"></script>
+<script src="app.js?v=20260919b"></script>
 </body>
 </html>

@@ -132,8 +132,31 @@ function formatPercent(n, decimals = 1) {
   return n.toFixed(decimals) + ' %';
 }
 
+// Greedy split of a rune line's quantity into x9/x3/unit tiers, taking the
+// highest tier first (x9 is always worth more per rune than 3×x3, itself
+// always worth more per rune than 9×unit).
+function runeLineSplit(r) {
+  const rt = state.data.runeTypes.find((t) => t.id === r.typeId);
+  const x9Price = rt && rt.x9Price ? rt.x9Price : null;
+  const x3Price = rt && rt.x3Price ? rt.x3Price : null;
+  let qty = r.qty;
+
+  const n9 = x9Price ? Math.floor(qty / 9) : 0;
+  qty -= n9 * 9;
+  const n3 = x3Price ? Math.floor(qty / 3) : 0;
+  qty -= n3 * 3;
+  const n1 = qty;
+
+  return { n9, n3, n1, x9Price, x3Price };
+}
+
+function runeLineValue(r) {
+  const { n9, n3, n1, x9Price, x3Price } = runeLineSplit(r);
+  return n9 * (x9Price || 0) + n3 * (x3Price || 0) + n1 * r.price;
+}
+
 function attemptValue(attempt) {
-  return attempt.runes.reduce((sum, r) => sum + r.qty * r.price, 0);
+  return attempt.runes.reduce((sum, r) => sum + runeLineValue(r), 0);
 }
 
 function attemptUnitCraftCost(attempt) {
@@ -327,6 +350,42 @@ function renderRuneTypes() {
   }
 }
 
+function renderRuneCombos() {
+  const container = document.getElementById('rune-combos-list');
+  if (state.data.runeTypes.length === 0) {
+    container.innerHTML = '<p class="empty-state">Aucun type de rune. Ajoute-en un dans la section ci-dessus.</p>';
+    return;
+  }
+
+  container.innerHTML = state.data.runeTypes.map((rt) => `
+    <div class="rune-combo-row" data-id="${rt.id}">
+      <span class="rt-name">${escapeHtml(rt.name)}</span>
+      <label class="combo-field">x3
+        <input type="number" min="0" step="1" class="rune-combo-x3-input" data-id="${rt.id}" value="${rt.x3Price ?? ''}" placeholder="Non défini">
+      </label>
+      <label class="combo-field">x9
+        <input type="number" min="0" step="1" class="rune-combo-x9-input" data-id="${rt.id}" value="${rt.x9Price ?? ''}" placeholder="Non défini">
+      </label>
+    </div>
+  `).join('');
+
+  function bindComboInput(selector, field) {
+    container.querySelectorAll(selector).forEach((input) => {
+      input.addEventListener('change', (e) => {
+        const rt = state.data.runeTypes.find((r) => r.id === e.target.dataset.id);
+        if (!rt) return;
+        const raw = e.target.value;
+        rt[field] = raw === '' ? null : Number(raw) || 0;
+        saveData();
+        render();
+      });
+    });
+  }
+
+  bindComboInput('.rune-combo-x3-input', 'x3Price');
+  bindComboInput('.rune-combo-x9-input', 'x9Price');
+}
+
 document.getElementById('rune-type-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const name = document.getElementById('rune-type-name').value.trim();
@@ -498,7 +557,15 @@ function createCraftPage(cfg) {
           : a.runes.map((r) => {
             const rt = state.data.runeTypes.find((t) => t.id === r.typeId);
             const name = rt ? rt.name : '(rune supprimée)';
-            return `${r.qty}× ${escapeHtml(name)} (${formatKamas(r.price)}/u)`;
+            const { n9, n3, n1 } = runeLineSplit(r);
+            if (n9 === 0 && n3 === 0) {
+              return `${r.qty}× ${escapeHtml(name)} (${formatKamas(r.price)}/u)`;
+            }
+            const parts = [];
+            if (n9 > 0) parts.push(`${n9}×x9`);
+            if (n3 > 0) parts.push(`${n3}×x3`);
+            if (n1 > 0) parts.push(`${n1}×u`);
+            return `${r.qty}× ${escapeHtml(name)} (${parts.join(' + ')})`;
           }).join(', ');
         const value = attemptValue(a);
         const date = new Date(a.date).toLocaleDateString('fr-FR');
@@ -1438,6 +1505,7 @@ function escapeHtml(str) {
 
 function render() {
   renderRuneTypes();
+  renderRuneCombos();
   closeInlineForms();
   runePaPage.renderTable();
   sculpteurPage.renderTable();
