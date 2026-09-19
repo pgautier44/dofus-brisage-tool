@@ -16,6 +16,7 @@
 
   <div class="tabs" role="tablist">
     <button type="button" class="tab-btn active" data-tab="items" role="tab" aria-selected="true">Rune Pa</button>
+    <button type="button" class="tab-btn" data-tab="sculpteur" role="tab" aria-selected="false">Sculpteur</button>
     <button type="button" class="tab-btn" data-tab="jewelry" role="tab" aria-selected="false">Bijoutier/Joaillo</button>
     <button type="button" class="tab-btn" data-tab="runes" role="tab" aria-selected="false">Types de runes</button>
   </div>
@@ -89,6 +90,54 @@
     </p>
   </section>
 
+  <section class="card hidden" id="sculptor-section" data-tab-panel="sculpteur">
+    <div class="section-header">
+      <h2>Sculpteur</h2>
+      <div class="section-header-actions">
+        <button id="sculptor-refresh-btn" class="secondary-btn" title="Recharger les données depuis le serveur (pour voir les changements faits sur un autre PC)">🔄 Actualiser</button>
+        <button id="show-add-sculptor-item-btn" class="primary-btn">+ Nouvel objet</button>
+      </div>
+    </div>
+
+    <form id="add-sculptor-item-form" class="panel hidden">
+      <h3>Nouvel objet</h3>
+      <label>Nom de l'objet
+        <input type="text" id="sculptor-item-name" required>
+      </label>
+      <p class="hint">Le coût de craft, le % de brisage et les runes obtenues se renseignent essai par essai (ils peuvent varier d'une fois à l'autre) via "+ Nouvel essai".</p>
+      <div class="form-actions">
+        <button type="submit" class="primary-btn">Ajouter</button>
+        <button type="button" class="cancel-btn" data-cancel="add-sculptor-item-form">Annuler</button>
+      </div>
+    </form>
+
+    <input type="search" id="sculptor-search" class="search-input" placeholder="Rechercher un objet...">
+
+    <div class="table-wrapper">
+      <table id="sculptor-table">
+        <thead>
+          <tr>
+            <th data-sort="name">Objet</th>
+            <th data-sort="unitCraftCost">Prix craft unitaire (moy.)</th>
+            <th data-sort="count">Nb essais</th>
+            <th data-sort="avgPercent">% moyen brisage</th>
+            <th data-sort="avgValue">Gain runes (moyen)</th>
+            <th data-sort="netGain">Gain net</th>
+            <th data-sort="ratio">Rentabilité</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="sculptor-table-body"></tbody>
+      </table>
+    </div>
+    <p class="hint legend">
+      <span class="badge rentable">Rentable</span>
+      <span class="badge rel-rentable">Relativement rentable</span>
+      <span class="badge rel-pas-rentable">Relativement pas rentable</span>
+      <span class="badge pas-rentable">Pas rentable</span>
+      <span class="badge no-data">Pas assez de données</span>
+    </p>
+  </section>
 
   <section class="card hidden" id="jewelry-section" data-tab-panel="jewelry">
     <div class="section-header">

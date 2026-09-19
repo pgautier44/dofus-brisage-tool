@@ -33,7 +33,7 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], items: [], attempts: [], jewels: [], jewelSales: [] };
+    return { runeTypes: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], jewels: [], jewelSales: [] };
   }
 
   const d = data.data || {};
@@ -41,6 +41,8 @@ async function loadData() {
     runeTypes: d.runeTypes || [],
     items: d.items || [],
     attempts: d.attempts || [],
+    sculptorItems: d.sculptorItems || [],
+    sculptorAttempts: d.sculptorAttempts || [],
     jewels: d.jewels || [],
     jewelSales: d.jewelSales || [],
   };
@@ -101,10 +103,13 @@ function showAlert(message) {
 }
 
 const state = {
-  data: { runeTypes: [], items: [], attempts: [], jewels: [], jewelSales: [] },
+  data: { runeTypes: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], jewels: [], jewelSales: [] },
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
+  sculptorSort: { column: 'ratio', direction: 'desc' },
+  openSculptorDetailId: null,
+  sculptorSearchQuery: '',
   jewelrySort: { column: 'avgRatio', direction: 'desc' },
   openJewelDetailId: null,
   jewelrySearchQuery: '',
@@ -124,44 +129,12 @@ function formatPercent(n, decimals = 1) {
   return n.toFixed(decimals) + ' %';
 }
 
-function getItemAttempts(itemId) {
-  return state.data.attempts.filter((a) => a.itemId === itemId);
-}
-
 function attemptValue(attempt) {
   return attempt.runes.reduce((sum, r) => sum + r.qty * r.price, 0);
 }
 
 function attemptUnitCraftCost(attempt) {
   return attempt.craftQty > 0 ? attempt.craftCost / attempt.craftQty : null;
-}
-
-function computeItemStats(item) {
-  const attempts = getItemAttempts(item.id);
-  const count = attempts.length;
-
-  let unitCraftCost = null; // informational: average cost per crafted item
-  let avgCraftCost = null; // average TOTAL cost of the series, per essai — what profitability is judged against
-  let avgPercent = null;
-  let avgValue = null; // average TOTAL rune value obtained, per essai
-  let ratio = null;
-  let netGain = null;
-
-  if (count > 0) {
-    const unitCosts = attempts.map(attemptUnitCraftCost).filter((c) => c !== null);
-    if (unitCosts.length > 0) unitCraftCost = unitCosts.reduce((s, c) => s + c, 0) / unitCosts.length;
-
-    avgCraftCost = attempts.reduce((s, a) => s + a.craftCost, 0) / count;
-    avgPercent = attempts.reduce((s, a) => s + a.percent, 0) / count;
-    avgValue = attempts.reduce((s, a) => s + attemptValue(a), 0) / count;
-
-    if (avgCraftCost) {
-      ratio = avgValue / avgCraftCost;
-      netGain = avgValue - avgCraftCost;
-    }
-  }
-
-  return { unitCraftCost, avgCraftCost, count, avgPercent, avgValue, ratio, netGain };
 }
 
 function classifyRatio(ratio) {
@@ -293,11 +266,7 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
   });
 });
 
-// ---------- Items ----------
-
-document.getElementById('show-add-item-btn').addEventListener('click', () => {
-  document.getElementById('add-item-form').classList.toggle('hidden');
-});
+// ---------- Craft pages factory (shared by Rune Pa, Sculpteur, and any future technique) ----------
 
 document.querySelectorAll('[data-cancel]').forEach((btn) => {
   btn.addEventListener('click', (e) => {
@@ -305,179 +274,411 @@ document.querySelectorAll('[data-cancel]').forEach((btn) => {
   });
 });
 
-document.getElementById('item-search').addEventListener('input', (e) => {
-  state.searchQuery = e.target.value.trim().toLowerCase();
-  renderItemsTable();
-});
-
-document.getElementById('add-item-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = document.getElementById('item-name').value.trim();
-  if (!name) return;
-  state.data.items.push({ id: uid(), name });
-  saveData();
-  e.target.reset();
-  document.getElementById('add-item-form').classList.add('hidden');
-  render();
-});
-
-function sortedItems() {
-  const { column, direction } = state.sort;
-  const items = state.searchQuery
-    ? state.data.items.filter((item) => item.name.toLowerCase().includes(state.searchQuery))
-    : state.data.items;
-  const rows = items.map((item) => ({ item, stats: computeItemStats(item) }));
-
-  rows.sort((a, b) => {
-    let va, vb;
-    switch (column) {
-      case 'name':
-        va = a.item.name.toLowerCase();
-        vb = b.item.name.toLowerCase();
-        break;
-      case 'unitCraftCost':
-        va = a.stats.unitCraftCost;
-        vb = b.stats.unitCraftCost;
-        break;
-      case 'count':
-        va = a.stats.count;
-        vb = b.stats.count;
-        break;
-      case 'avgPercent':
-        va = a.stats.avgPercent;
-        vb = b.stats.avgPercent;
-        break;
-      case 'avgValue':
-        va = a.stats.avgValue;
-        vb = b.stats.avgValue;
-        break;
-      case 'ratio':
-        va = a.stats.ratio;
-        vb = b.stats.ratio;
-        break;
-      case 'netGain':
-      default:
-        va = a.stats.netGain;
-        vb = b.stats.netGain;
-        break;
-    }
-    // Nulls always last regardless of direction
-    if (va === null || va === undefined) return 1;
-    if (vb === null || vb === undefined) return -1;
-    if (va < vb) return direction === 'asc' ? -1 : 1;
-    if (va > vb) return direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  return rows;
-}
-
-function renderItemsTable() {
-  const tbody = document.getElementById('items-table-body');
-  const rows = sortedItems();
-
-  if (rows.length === 0) {
-    const message = state.searchQuery
-      ? `Aucun objet ne correspond à "${escapeHtml(state.searchQuery)}".`
-      : 'Aucun objet pour le moment. Ajoute-en un avec "+ Nouvel objet".';
-    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">${message}</td></tr>`;
-  } else {
-    tbody.innerHTML = rows.map(({ item, stats }) => {
-      const cat = classifyRatio(stats.ratio);
-      const ratioLabel = stats.ratio !== null ? formatPercent(stats.ratio * 100, 0) : '—';
-      const netGainCls = stats.netGain === null ? '' : stats.netGain >= 0 ? 'gain-positive' : 'gain-negative';
-      const netGainLabel = stats.netGain === null ? '—' : (stats.netGain >= 0 ? '+' : '') + formatKamas(stats.netGain);
-      const isOpen = state.openDetailItemId === item.id;
-      return `
-        <tr data-item-id="${item.id}" class="clickable-row">
-          <td>
-            <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
-            <span class="name-link" title="Cliquer pour renommer">${escapeHtml(item.name)}</span>
-          </td>
-          <td title="Moyenne calculée à partir des essais — pour corriger une valeur, ouvre le détail puis 'Modifier' sur l'essai concerné">${formatKamas(stats.unitCraftCost)}</td>
-          <td>${stats.count}</td>
-          <td>${formatPercent(stats.avgPercent)}</td>
-          <td>${formatKamas(stats.avgValue)}</td>
-          <td class="${netGainCls}">${netGainLabel}</td>
-          <td>
-            <span class="badge ${cat.cls}">${cat.label}</span>
-            <div class="ratio-note">${stats.ratio !== null ? ratioLabel + ' du coût de craft de la série' : ''}</div>
-          </td>
-          <td class="row-actions">
-            <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
-            <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
-          </td>
-        </tr>
-        ${buildItemDetailRowHtml(item)}
-      `;
-    }).join('');
-  }
-
-  tbody.querySelectorAll('tr[data-item-id]').forEach((row) => {
-    row.addEventListener('click', (e) => {
-      const id = row.dataset.itemId;
-      if (e.target.closest('.row-actions')) return;
-      if (e.target.closest('.name-link')) {
-        openEditItemForm(id);
-        return;
-      }
-      state.openDetailItemId = state.openDetailItemId === id ? null : id;
-      renderItemsTable();
-    });
-  });
-  tbody.querySelectorAll('.add-attempt-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openAddAttemptForm(e.target.dataset.id));
-  });
-  tbody.querySelectorAll('.edit-attempt-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openEditAttemptForm(e.target.dataset.id));
-  });
-  tbody.querySelectorAll('.delete-attempt-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const id = e.target.dataset.id;
-      state.data.attempts = state.data.attempts.filter((a) => a.id !== id);
-      saveData();
-      render();
-    });
-  });
-  tbody.querySelectorAll('.delete-item-btn').forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
-      const id = e.target.dataset.id;
-      const item = state.data.items.find((i) => i.id === id);
-      const ok = await showConfirm(`Supprimer "${item.name}" et tous ses essais associés ?`, { danger: true });
-      if (!ok) return;
-      state.data.items = state.data.items.filter((i) => i.id !== id);
-      state.data.attempts = state.data.attempts.filter((a) => a.itemId !== id);
-      if (state.openDetailItemId === id) state.openDetailItemId = null;
-      saveData();
-      render();
-    });
-  });
-
-  updateSortHeaders();
-}
-
-function updateSortHeaders() {
-  document.querySelectorAll('#items-table th[data-sort]').forEach((th) => {
+function updateSortHeadersGeneric(tableId, sort) {
+  document.querySelectorAll(`#${tableId} th[data-sort]`).forEach((th) => {
     th.classList.remove('sorted');
     th.removeAttribute('data-arrow');
-    if (th.dataset.sort === state.sort.column) {
+    if (th.dataset.sort === sort.column) {
       th.classList.add('sorted');
-      th.setAttribute('data-arrow', state.sort.direction === 'asc' ? '▲' : '▼');
+      th.setAttribute('data-arrow', sort.direction === 'asc' ? '▲' : '▼');
     }
   });
 }
 
-document.querySelectorAll('#items-table th[data-sort]').forEach((th) => {
-  th.addEventListener('click', () => {
-    const col = th.dataset.sort;
-    if (state.sort.column === col) {
-      state.sort.direction = state.sort.direction === 'asc' ? 'desc' : 'asc';
-    } else {
-      state.sort.column = col;
-      state.sort.direction = col === 'name' ? 'asc' : 'desc';
+function createCraftPage(cfg) {
+  function items() { return state.data[cfg.itemsKey]; }
+  function attemptsArr() { return state.data[cfg.attemptsKey]; }
+  function sort() { return state[cfg.sortKey]; }
+
+  function getAttemptsForItem(itemId) {
+    return attemptsArr().filter((a) => a.itemId === itemId);
+  }
+
+  function computeStats(item) {
+    const atts = getAttemptsForItem(item.id);
+    const count = atts.length;
+
+    let unitCraftCost = null; // informational: average cost per crafted item
+    let avgCraftCost = null; // average TOTAL cost of the series, per essai — what profitability is judged against
+    let avgPercent = null;
+    let avgValue = null; // average TOTAL rune value obtained, per essai
+    let ratio = null;
+    let netGain = null;
+
+    if (count > 0) {
+      const unitCosts = atts.map(attemptUnitCraftCost).filter((c) => c !== null);
+      if (unitCosts.length > 0) unitCraftCost = unitCosts.reduce((s, c) => s + c, 0) / unitCosts.length;
+
+      avgCraftCost = atts.reduce((s, a) => s + a.craftCost, 0) / count;
+      avgPercent = atts.reduce((s, a) => s + a.percent, 0) / count;
+      avgValue = atts.reduce((s, a) => s + attemptValue(a), 0) / count;
+
+      if (avgCraftCost) {
+        ratio = avgValue / avgCraftCost;
+        netGain = avgValue - avgCraftCost;
+      }
     }
-    renderItemsTable();
+
+    return { unitCraftCost, avgCraftCost, count, avgPercent, avgValue, ratio, netGain };
+  }
+
+  function knownRuneTypeIds(itemId) {
+    const seen = [];
+    getAttemptsForItem(itemId).forEach((a) => {
+      a.runes.forEach((r) => {
+        if (!seen.includes(r.typeId) && state.data.runeTypes.some((rt) => rt.id === r.typeId)) {
+          seen.push(r.typeId);
+        }
+      });
+    });
+    return seen;
+  }
+
+  function sortedRows() {
+    const { column, direction } = sort();
+    const q = state[cfg.searchKey];
+    const list = q ? items().filter((it) => it.name.toLowerCase().includes(q)) : items();
+    const rows = list.map((item) => ({ item, stats: computeStats(item) }));
+
+    rows.sort((a, b) => {
+      let va, vb;
+      switch (column) {
+        case 'name':
+          va = a.item.name.toLowerCase();
+          vb = b.item.name.toLowerCase();
+          break;
+        case 'unitCraftCost':
+          va = a.stats.unitCraftCost;
+          vb = b.stats.unitCraftCost;
+          break;
+        case 'count':
+          va = a.stats.count;
+          vb = b.stats.count;
+          break;
+        case 'avgPercent':
+          va = a.stats.avgPercent;
+          vb = b.stats.avgPercent;
+          break;
+        case 'avgValue':
+          va = a.stats.avgValue;
+          vb = b.stats.avgValue;
+          break;
+        case 'ratio':
+          va = a.stats.ratio;
+          vb = b.stats.ratio;
+          break;
+        case 'netGain':
+        default:
+          va = a.stats.netGain;
+          vb = b.stats.netGain;
+          break;
+      }
+      // Nulls always last regardless of direction
+      if (va === null || va === undefined) return 1;
+      if (vb === null || vb === undefined) return -1;
+      if (va < vb) return direction === 'asc' ? -1 : 1;
+      if (va > vb) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return rows;
+  }
+
+  function buildDetailRowHtml(item) {
+    if (state[cfg.openDetailKey] !== item.id) return '';
+
+    const atts = getAttemptsForItem(item.id).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const rowsHtml = atts.length === 0
+      ? '<tr><td colspan="7" class="empty-state">Aucun essai enregistré</td></tr>'
+      : atts.map((a) => {
+        const runesLabel = a.runes.length === 0
+          ? '—'
+          : a.runes.map((r) => {
+            const rt = state.data.runeTypes.find((t) => t.id === r.typeId);
+            const name = rt ? rt.name : '(rune supprimée)';
+            return `${r.qty}× ${escapeHtml(name)} (${formatKamas(r.price)}/u)`;
+          }).join(', ');
+        const value = attemptValue(a);
+        const date = new Date(a.date).toLocaleDateString('fr-FR');
+        const unitCost = attemptUnitCraftCost(a);
+        const netGain = value - a.craftCost;
+        const netCls = netGain >= 0 ? 'gain-positive' : 'gain-negative';
+        const netLabel = (netGain >= 0 ? '+' : '') + formatKamas(netGain);
+        return `
+          <tr data-attempt-id="${a.id}">
+            <td>${date}</td>
+            <td>${formatKamas(a.craftCost)}<div class="ratio-note">${formatKamas(unitCost)}/u × ${a.craftQty}</div></td>
+            <td>${formatPercent(a.percent)}</td>
+            <td>${runesLabel}</td>
+            <td>${formatKamas(value)}</td>
+            <td class="${netCls}">${netLabel}</td>
+            <td class="row-actions">
+              <button type="button" class="edit-attempt-btn" data-id="${a.id}">Modifier</button>
+              <button type="button" class="delete-attempt-btn" data-id="${a.id}">✕</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+    return `
+      <tr class="detail-row">
+        <td colspan="8">
+          <div class="detail-panel">
+            <h3>Historique — ${escapeHtml(item.name)}</h3>
+            <table class="attempts-table">
+              <thead>
+                <tr><th>Date</th><th>Coût craft (série)</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur runes</th><th>Résultat</th><th class="actions-col"></th></tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  function openAddAttempt(itemId) {
+    closeInlineForms();
+    const item = items().find((i) => i.id === itemId);
+    if (!item) return;
+
+    if (state.data.runeTypes.length === 0) {
+      showAlert("Ajoute d'abord au moins un type de rune dans la section 'Types de runes'.");
+      return;
+    }
+
+    const form = buildAttemptForm(item.name, null, knownRuneTypeIds(itemId));
+    form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const attempt = readAttemptForm(form);
+      attemptsArr().push({ id: uid(), itemId, date: new Date().toISOString(), ...attempt });
+      saveData();
+      render();
+    });
+
+    insertInlineForm(form, {
+      afterRowSelector: `#${cfg.tableBodyId} tr[data-item-id="${itemId}"]`,
+      holderClass: 'add-attempt-holder',
+      colspan: 8,
+      focusSelector: '.attempt-craft-cost',
+    });
+  }
+
+  function openEditAttempt(attemptId) {
+    closeInlineForms();
+    const attempt = attemptsArr().find((a) => a.id === attemptId);
+    if (!attempt) return;
+    const item = items().find((i) => i.id === attempt.itemId);
+    if (!item) return;
+
+    const form = buildAttemptForm(item.name, attempt);
+    form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      Object.assign(attempt, readAttemptForm(form));
+      saveData();
+      render();
+    });
+
+    insertInlineForm(form, {
+      afterRowSelector: `.attempts-table tr[data-attempt-id="${attemptId}"]`,
+      holderClass: 'edit-attempt-holder',
+      colspan: 7,
+      focusSelector: '.attempt-craft-cost',
+    });
+  }
+
+  function openEditItem(itemId) {
+    closeInlineForms();
+    const item = items().find((i) => i.id === itemId);
+    if (!item) return;
+
+    const template = document.getElementById('edit-item-template');
+    const form = template.content.firstElementChild.cloneNode(true);
+    form.querySelector('.item-name-label').textContent = item.name;
+    form.querySelector('.edit-item-name').value = item.name;
+
+    form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = form.querySelector('.edit-item-name').value.trim();
+      if (!name) return;
+      item.name = name;
+      saveData();
+      render();
+    });
+
+    insertInlineForm(form, {
+      afterRowSelector: `#${cfg.tableBodyId} tr[data-item-id="${itemId}"]`,
+      holderClass: 'edit-item-holder',
+      colspan: 8,
+      focusSelector: '.edit-item-name',
+    });
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById(cfg.tableBodyId);
+    const rows = sortedRows();
+
+    if (rows.length === 0) {
+      const q = state[cfg.searchKey];
+      const message = q
+        ? `Aucun objet ne correspond à "${escapeHtml(q)}".`
+        : 'Aucun objet pour le moment. Ajoute-en un avec "+ Nouvel objet".';
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">${message}</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map(({ item, stats }) => {
+        const cat = classifyRatio(stats.ratio);
+        const ratioLabel = stats.ratio !== null ? formatPercent(stats.ratio * 100, 0) : '—';
+        const netGainCls = stats.netGain === null ? '' : stats.netGain >= 0 ? 'gain-positive' : 'gain-negative';
+        const netGainLabel = stats.netGain === null ? '—' : (stats.netGain >= 0 ? '+' : '') + formatKamas(stats.netGain);
+        const isOpen = state[cfg.openDetailKey] === item.id;
+        return `
+          <tr data-item-id="${item.id}" class="clickable-row">
+            <td>
+              <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
+              <span class="name-link" title="Cliquer pour renommer">${escapeHtml(item.name)}</span>
+            </td>
+            <td title="Moyenne calculée à partir des essais — pour corriger une valeur, ouvre le détail puis 'Modifier' sur l'essai concerné">${formatKamas(stats.unitCraftCost)}</td>
+            <td>${stats.count}</td>
+            <td>${formatPercent(stats.avgPercent)}</td>
+            <td>${formatKamas(stats.avgValue)}</td>
+            <td class="${netGainCls}">${netGainLabel}</td>
+            <td>
+              <span class="badge ${cat.cls}">${cat.label}</span>
+              <div class="ratio-note">${stats.ratio !== null ? ratioLabel + ' du coût de craft de la série' : ''}</div>
+            </td>
+            <td class="row-actions">
+              <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
+              <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
+            </td>
+          </tr>
+          ${buildDetailRowHtml(item)}
+        `;
+      }).join('');
+    }
+
+    tbody.querySelectorAll('tr[data-item-id]').forEach((row) => {
+      row.addEventListener('click', (e) => {
+        const id = row.dataset.itemId;
+        if (e.target.closest('.row-actions')) return;
+        if (e.target.closest('.name-link')) {
+          openEditItem(id);
+          return;
+        }
+        state[cfg.openDetailKey] = state[cfg.openDetailKey] === id ? null : id;
+        renderTable();
+      });
+    });
+    tbody.querySelectorAll('.add-attempt-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => openAddAttempt(e.target.dataset.id));
+    });
+    tbody.querySelectorAll('.edit-attempt-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => openEditAttempt(e.target.dataset.id));
+    });
+    tbody.querySelectorAll('.delete-attempt-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.dataset.id;
+        state.data[cfg.attemptsKey] = attemptsArr().filter((a) => a.id !== id);
+        saveData();
+        render();
+      });
+    });
+    tbody.querySelectorAll('.delete-item-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.dataset.id;
+        const item = items().find((i) => i.id === id);
+        const ok = await showConfirm(`Supprimer "${item.name}" et tous ses essais associés ?`, { danger: true });
+        if (!ok) return;
+        state.data[cfg.itemsKey] = items().filter((i) => i.id !== id);
+        state.data[cfg.attemptsKey] = attemptsArr().filter((a) => a.itemId !== id);
+        if (state[cfg.openDetailKey] === id) state[cfg.openDetailKey] = null;
+        saveData();
+        render();
+      });
+    });
+
+    updateSortHeadersGeneric(cfg.tableId, sort());
+  }
+
+  document.getElementById(cfg.showAddItemBtnId).addEventListener('click', () => {
+    document.getElementById(cfg.addItemFormId).classList.toggle('hidden');
   });
+
+  document.getElementById(cfg.searchInputId).addEventListener('input', (e) => {
+    state[cfg.searchKey] = e.target.value.trim().toLowerCase();
+    renderTable();
+  });
+
+  document.getElementById(cfg.addItemFormId).addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById(cfg.itemNameInputId).value.trim();
+    if (!name) return;
+    items().push({ id: uid(), name });
+    saveData();
+    e.target.reset();
+    document.getElementById(cfg.addItemFormId).classList.add('hidden');
+    render();
+  });
+
+  document.querySelectorAll(`#${cfg.tableId} th[data-sort]`).forEach((th) => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      const s = sort();
+      if (s.column === col) {
+        s.direction = s.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        s.column = col;
+        s.direction = col === 'name' ? 'asc' : 'desc';
+      }
+      renderTable();
+    });
+  });
+
+  document.getElementById(cfg.refreshBtnId).addEventListener('click', async () => {
+    const btn = document.getElementById(cfg.refreshBtnId);
+    btn.disabled = true;
+    state.data = await loadData();
+    render();
+    btn.disabled = false;
+  });
+
+  return { renderTable };
+}
+
+const runePaPage = createCraftPage({
+  itemsKey: 'items',
+  attemptsKey: 'attempts',
+  sortKey: 'sort',
+  searchKey: 'searchQuery',
+  openDetailKey: 'openDetailItemId',
+  tableId: 'items-table',
+  tableBodyId: 'items-table-body',
+  addItemFormId: 'add-item-form',
+  itemNameInputId: 'item-name',
+  showAddItemBtnId: 'show-add-item-btn',
+  searchInputId: 'item-search',
+  refreshBtnId: 'refresh-btn',
+});
+
+const sculpteurPage = createCraftPage({
+  itemsKey: 'sculptorItems',
+  attemptsKey: 'sculptorAttempts',
+  sortKey: 'sculptorSort',
+  searchKey: 'sculptorSearchQuery',
+  openDetailKey: 'openSculptorDetailId',
+  tableId: 'sculptor-table',
+  tableBodyId: 'sculptor-table-body',
+  addItemFormId: 'add-sculptor-item-form',
+  itemNameInputId: 'sculptor-item-name',
+  showAddItemBtnId: 'show-add-sculptor-item-btn',
+  searchInputId: 'sculptor-search',
+  refreshBtnId: 'sculptor-refresh-btn',
 });
 
 // ---------- Add attempt form ----------
@@ -556,18 +757,6 @@ function buildAttemptForm(itemName, prefillAttempt, knownRuneTypeIds) {
   return form;
 }
 
-function knownRuneTypeIdsForItem(itemId) {
-  const seen = [];
-  getItemAttempts(itemId).forEach((a) => {
-    a.runes.forEach((r) => {
-      if (!seen.includes(r.typeId) && state.data.runeTypes.some((rt) => rt.id === r.typeId)) {
-        seen.push(r.typeId);
-      }
-    });
-  });
-  return seen;
-}
-
 function readAttemptForm(form) {
   const craftCost = Number(form.querySelector('.attempt-craft-cost').value) || 0;
   const craftQty = Number(form.querySelector('.attempt-craft-qty').value) || 0;
@@ -594,60 +783,6 @@ function insertInlineForm(form, { afterRowSelector, holderClass, colspan, focusS
   form.querySelector(focusSelector).focus();
 }
 
-function openAddAttemptForm(itemId) {
-  closeInlineForms();
-  const item = state.data.items.find((i) => i.id === itemId);
-  if (!item) return;
-
-  if (state.data.runeTypes.length === 0) {
-    showAlert("Ajoute d'abord au moins un type de rune dans la section 'Types de runes'.");
-    return;
-  }
-
-  const form = buildAttemptForm(item.name, null, knownRuneTypeIdsForItem(itemId));
-  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const attempt = readAttemptForm(form);
-    state.data.attempts.push({ id: uid(), itemId, date: new Date().toISOString(), ...attempt });
-    saveData();
-    render();
-  });
-
-  insertInlineForm(form, {
-    afterRowSelector: `#items-table-body tr[data-item-id="${itemId}"]`,
-    holderClass: 'add-attempt-holder',
-    colspan: 8,
-    focusSelector: '.attempt-craft-cost',
-  });
-}
-
-function openEditAttemptForm(attemptId) {
-  closeInlineForms();
-  const attempt = state.data.attempts.find((a) => a.id === attemptId);
-  if (!attempt) return;
-  const item = state.data.items.find((i) => i.id === attempt.itemId);
-  if (!item) return;
-
-  const form = buildAttemptForm(item.name, attempt);
-  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    Object.assign(attempt, readAttemptForm(form));
-    saveData();
-    render();
-  });
-
-  insertInlineForm(form, {
-    afterRowSelector: `.attempts-table tr[data-attempt-id="${attemptId}"]`,
-    holderClass: 'edit-attempt-holder',
-    colspan: 7,
-    focusSelector: '.attempt-craft-cost',
-  });
-}
-
 function closeInlineForms() {
   document.querySelectorAll(
     '.add-attempt-holder, .edit-item-holder, .edit-attempt-holder, .add-jewel-sale-holder, .edit-jewel-holder, .edit-jewel-sale-holder'
@@ -655,91 +790,6 @@ function closeInlineForms() {
 }
 
 // ---------- Edit item form ----------
-
-function openEditItemForm(itemId) {
-  closeInlineForms();
-  const item = state.data.items.find((i) => i.id === itemId);
-  if (!item) return;
-
-  const template = document.getElementById('edit-item-template');
-  const form = template.content.firstElementChild.cloneNode(true);
-  form.querySelector('.item-name-label').textContent = item.name;
-  form.querySelector('.edit-item-name').value = item.name;
-
-  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = form.querySelector('.edit-item-name').value.trim();
-    if (!name) return;
-    item.name = name;
-    saveData();
-    render();
-  });
-
-  insertInlineForm(form, {
-    afterRowSelector: `#items-table-body tr[data-item-id="${itemId}"]`,
-    holderClass: 'edit-item-holder',
-    colspan: 8,
-    focusSelector: '.edit-item-name',
-  });
-}
-
-// ---------- Item detail (attempt history) ----------
-
-function buildItemDetailRowHtml(item) {
-  if (state.openDetailItemId !== item.id) return '';
-
-  const attempts = getItemAttempts(item.id).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  const rowsHtml = attempts.length === 0
-    ? '<tr><td colspan="7" class="empty-state">Aucun essai enregistré</td></tr>'
-    : attempts.map((a) => {
-      const runesLabel = a.runes.length === 0
-        ? '—'
-        : a.runes.map((r) => {
-          const rt = state.data.runeTypes.find((t) => t.id === r.typeId);
-          const name = rt ? rt.name : '(rune supprimée)';
-          return `${r.qty}× ${escapeHtml(name)} (${formatKamas(r.price)}/u)`;
-        }).join(', ');
-      const value = attemptValue(a);
-      const date = new Date(a.date).toLocaleDateString('fr-FR');
-      const unitCost = attemptUnitCraftCost(a);
-      const netGain = value - a.craftCost;
-      const netCls = netGain >= 0 ? 'gain-positive' : 'gain-negative';
-      const netLabel = (netGain >= 0 ? '+' : '') + formatKamas(netGain);
-      return `
-        <tr data-attempt-id="${a.id}">
-          <td>${date}</td>
-          <td>${formatKamas(a.craftCost)}<div class="ratio-note">${formatKamas(unitCost)}/u × ${a.craftQty}</div></td>
-          <td>${formatPercent(a.percent)}</td>
-          <td>${runesLabel}</td>
-          <td>${formatKamas(value)}</td>
-          <td class="${netCls}">${netLabel}</td>
-          <td class="row-actions">
-            <button type="button" class="edit-attempt-btn" data-id="${a.id}">Modifier</button>
-            <button type="button" class="delete-attempt-btn" data-id="${a.id}">✕</button>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-  return `
-    <tr class="detail-row">
-      <td colspan="8">
-        <div class="detail-panel">
-          <h3>Historique — ${escapeHtml(item.name)}</h3>
-          <table class="attempts-table">
-            <thead>
-              <tr><th>Date</th><th>Coût craft (série)</th><th>% brisage</th><th>Runes obtenues</th><th>Valeur runes</th><th>Résultat</th><th class="actions-col"></th></tr>
-            </thead>
-            <tbody>${rowsHtml}</tbody>
-          </table>
-        </div>
-      </td>
-    </tr>
-  `;
-}
 
 // ---------- Jewelry (Bijoutier/Joaillo) ----------
 
@@ -1169,18 +1219,11 @@ function escapeHtml(str) {
 function render() {
   renderRuneTypes();
   closeInlineForms();
-  renderItemsTable();
+  runePaPage.renderTable();
+  sculpteurPage.renderTable();
   renderJewelryTable();
   renderJewelryTotals();
 }
-
-document.getElementById('refresh-btn').addEventListener('click', async () => {
-  const btn = document.getElementById('refresh-btn');
-  btn.disabled = true;
-  state.data = await loadData();
-  render();
-  btn.disabled = false;
-});
 
 // ---------- Legacy localStorage import (pre-Supabase data left on a browser) ----------
 
