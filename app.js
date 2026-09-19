@@ -180,8 +180,15 @@ function runeTypeRowHtml(rt) {
     <div class="rune-type-row" draggable="true" data-id="${rt.id}">
       <span class="drag-handle" title="Glisser pour réordonner / changer de catégorie">⠿</span>
       <span class="rt-name">${escapeHtml(rt.name)}</span>
-      <input type="number" min="0" step="1" value="${rt.price}" class="rt-price-input" data-id="${rt.id}">
-      <span>kamas</span>
+      <label class="rt-price-field">Prix
+        <input type="number" min="0" step="1" value="${rt.price}" class="rt-price-input" data-id="${rt.id}">
+      </label>
+      <label class="rt-price-field" title="Prix de vente combiné par lot de 3 (laisser vide si non utilisé)">x3
+        <input type="number" min="0" step="1" value="${rt.x3Price ?? ''}" class="rt-x3-input" data-id="${rt.id}" placeholder="—">
+      </label>
+      <label class="rt-price-field" title="Prix de vente combiné par lot de 9 (laisser vide si non utilisé)">x9
+        <input type="number" min="0" step="1" value="${rt.x9Price ?? ''}" class="rt-x9-input" data-id="${rt.id}" placeholder="—">
+      </label>
       <button type="button" class="remove-rt-btn" data-id="${rt.id}">Supprimer</button>
     </div>
   `;
@@ -309,6 +316,21 @@ function renderRuneTypes() {
     });
   });
 
+  function bindComboInput(selector, field) {
+    container.querySelectorAll(selector).forEach((input) => {
+      input.addEventListener('change', (e) => {
+        const rt = state.data.runeTypes.find((r) => r.id === e.target.dataset.id);
+        if (!rt) return;
+        const raw = e.target.value;
+        rt[field] = raw === '' ? null : Number(raw) || 0;
+        saveData();
+        render();
+      });
+    });
+  }
+  bindComboInput('.rt-x3-input', 'x3Price');
+  bindComboInput('.rt-x9-input', 'x9Price');
+
   container.querySelectorAll('.remove-rt-btn').forEach((btn) => {
     btn.addEventListener('click', async (e) => {
       const id = e.target.dataset.id;
@@ -348,42 +370,6 @@ function renderRuneTypes() {
   if ([...categorySelect.options].some((o) => o.value === previousValue)) {
     categorySelect.value = previousValue;
   }
-}
-
-function renderRuneCombos() {
-  const container = document.getElementById('rune-combos-list');
-  if (state.data.runeTypes.length === 0) {
-    container.innerHTML = '<p class="empty-state">Aucun type de rune. Ajoute-en un dans la section ci-dessus.</p>';
-    return;
-  }
-
-  container.innerHTML = state.data.runeTypes.map((rt) => `
-    <div class="rune-combo-row" data-id="${rt.id}">
-      <span class="rt-name">${escapeHtml(rt.name)}</span>
-      <label class="combo-field">x3
-        <input type="number" min="0" step="1" class="rune-combo-x3-input" data-id="${rt.id}" value="${rt.x3Price ?? ''}" placeholder="Non défini">
-      </label>
-      <label class="combo-field">x9
-        <input type="number" min="0" step="1" class="rune-combo-x9-input" data-id="${rt.id}" value="${rt.x9Price ?? ''}" placeholder="Non défini">
-      </label>
-    </div>
-  `).join('');
-
-  function bindComboInput(selector, field) {
-    container.querySelectorAll(selector).forEach((input) => {
-      input.addEventListener('change', (e) => {
-        const rt = state.data.runeTypes.find((r) => r.id === e.target.dataset.id);
-        if (!rt) return;
-        const raw = e.target.value;
-        rt[field] = raw === '' ? null : Number(raw) || 0;
-        saveData();
-        render();
-      });
-    });
-  }
-
-  bindComboInput('.rune-combo-x3-input', 'x3Price');
-  bindComboInput('.rune-combo-x9-input', 'x9Price');
 }
 
 document.getElementById('rune-type-form').addEventListener('submit', (e) => {
@@ -1505,7 +1491,6 @@ function escapeHtml(str) {
 
 function render() {
   renderRuneTypes();
-  renderRuneCombos();
   closeInlineForms();
   runePaPage.renderTable();
   sculpteurPage.renderTable();

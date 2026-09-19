@@ -309,10 +309,19 @@ tbody tr:hover td.row-actions { background: inherit; }
   gap: 10px;
   padding: 6px 0;
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
 }
-.rune-type-row .rt-name { flex: 1; font-weight: 600; }
-.rune-type-row input[type="number"] { width: 130px; }
+.rune-type-row .rt-name { flex: 1; min-width: 100px; font-weight: 600; }
 .rune-type-row .remove-rt-btn { color: var(--pas-rentable); background: transparent; border: none; }
+
+.rt-price-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.rt-price-field input[type="number"] { width: 90px; }
 
 .drag-handle {
   cursor: grab;
@@ -358,24 +367,6 @@ tbody tr:hover td.row-actions { background: inherit; }
 }
 .rune-category-rows .rune-type-row:last-child { border-bottom: none; }
 .empty-state.small { padding: 6px 0; font-size: 0.85rem; }
-
-.rune-combo-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-}
-.rune-combo-row .rt-name { flex: 1; min-width: 140px; font-weight: 600; }
-.rune-combo-row .combo-field {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  color: var(--text-dim);
-}
-.rune-combo-row .combo-field input { width: 110px; }
 
 .rune-row {
   display: flex;

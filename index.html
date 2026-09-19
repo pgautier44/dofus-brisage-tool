@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20260919b">
+<link rel="stylesheet" href="style.css?v=20260919c">
 </head>
 <body class="loading">
 <header>
@@ -32,7 +32,7 @@
 
   <section class="card hidden" id="rune-types-section" data-tab-panel="runes">
     <h2>Types de runes</h2>
-    <p class="hint">Ajoute ici chaque type de rune que tu peux obtenir en brisant (PA, PM, Vitalité, ...) avec son prix actuel à l'hôtel de vente. Glisse une rune sur une catégorie pour la ranger dedans (et réordonner).</p>
+    <p class="hint">Ajoute ici chaque type de rune que tu peux obtenir en brisant (PA, PM, Vitalité, ...) avec son prix actuel à l'hôtel de vente. Renseigne aussi les prix x3/x9 si tu vends les runes combinées : la valeur des runes obtenues sur un essai les utilisera automatiquement quand c'est plus avantageux. Glisse une rune sur une catégorie pour la ranger dedans (et réordonner).</p>
     <div id="rune-types-list"></div>
     <form id="rune-type-form" class="inline-form">
       <input type="text" id="rune-type-name" placeholder="Nom de la rune (ex: Rune Pa)" required>
@@ -48,9 +48,6 @@
       <button type="submit">Ajouter une catégorie</button>
     </form>
 
-    <h3>Combinaisons de runes</h3>
-    <p class="hint">Pour chaque rune, renseigne le prix de vente combiné x3 (regroupement de 3) et x9 (regroupement de 9) si tu les connais. Quand tu rentres des runes obtenues sur un essai, la valeur retenue combine automatiquement le plus de x9 possible, puis le plus de x3 possible sur le reste, puis le prix unitaire pour ce qu'il reste.</p>
-    <div id="rune-combos-list"></div>
   </section>
 
   <section class="card" id="items-section" data-tab-panel="items">
@@ -337,6 +334,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260919b"></script>
+<script src="app.js?v=20260919c"></script>
 </body>
 </html>
