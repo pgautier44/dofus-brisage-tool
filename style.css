@@ -412,9 +412,14 @@ tbody tr:hover { background: var(--row-hover); }
 }
 .detail-panel h3 { margin-top: 0; }
 
-.attempts-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
+.attempts-table { width: auto; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
 .attempts-table th, .attempts-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
 .attempts-table tbody tr:nth-child(even) { background: var(--row-stripe); }
 .attempts-table tbody tr:hover { background: var(--row-hover); }
+
+.runes-summary {
+  cursor: help;
+  border-bottom: 1px dotted var(--text-dim);
+}
 
 .empty-state { color: var(--text-dim); font-style: italic; padding: 20px 0; text-align: center; }

@@ -538,21 +538,22 @@ function createCraftPage(cfg) {
     const rowsHtml = atts.length === 0
       ? '<tr><td colspan="7" class="empty-state">Aucun essai enregistré</td></tr>'
       : atts.map((a) => {
-        const runesLabel = a.runes.length === 0
+        const runeDetailLines = a.runes.map((r) => {
+          const rt = state.data.runeTypes.find((t) => t.id === r.typeId);
+          const name = rt ? rt.name : '(rune supprimée)';
+          const { n9, n3, n1 } = runeLineSplit(r);
+          if (n9 === 0 && n3 === 0) {
+            return `${r.qty}× ${name} (${formatKamas(r.price)}/u)`;
+          }
+          const parts = [];
+          if (n9 > 0) parts.push(`${n9}×x9`);
+          if (n3 > 0) parts.push(`${n3}×x3`);
+          if (n1 > 0) parts.push(`${n1}×u`);
+          return `${r.qty}× ${name} (${parts.join(' + ')})`;
+        });
+        const runesCell = a.runes.length === 0
           ? '—'
-          : a.runes.map((r) => {
-            const rt = state.data.runeTypes.find((t) => t.id === r.typeId);
-            const name = rt ? rt.name : '(rune supprimée)';
-            const { n9, n3, n1 } = runeLineSplit(r);
-            if (n9 === 0 && n3 === 0) {
-              return `${r.qty}× ${escapeHtml(name)} (${formatKamas(r.price)}/u)`;
-            }
-            const parts = [];
-            if (n9 > 0) parts.push(`${n9}×x9`);
-            if (n3 > 0) parts.push(`${n3}×x3`);
-            if (n1 > 0) parts.push(`${n1}×u`);
-            return `${r.qty}× ${escapeHtml(name)} (${parts.join(' + ')})`;
-          }).join(', ');
+          : `<span class="runes-summary" title="${escapeHtml(runeDetailLines.join('\n'))}">${a.runes.length} rune${a.runes.length > 1 ? 's' : ''} ℹ</span>`;
         const value = attemptValue(a);
         const date = new Date(a.date).toLocaleDateString('fr-FR');
         const unitCost = attemptUnitCraftCost(a);
@@ -564,7 +565,7 @@ function createCraftPage(cfg) {
             <td>${date}</td>
             <td>${formatKamas(a.craftCost)}<div class="ratio-note">${formatKamas(unitCost)}/u × ${a.craftQty}</div></td>
             <td>${formatPercent(a.percent)}</td>
-            <td>${runesLabel}</td>
+            <td>${runesCell}</td>
             <td>${formatKamas(value)}</td>
             <td class="${netCls}">${netLabel}</td>
             <td class="row-actions">
