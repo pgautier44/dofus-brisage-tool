@@ -315,16 +315,28 @@ function renderRuneTypes() {
       render();
     });
   });
+
+  const categorySelect = document.getElementById('rune-type-category');
+  const previousValue = categorySelect.value;
+  categorySelect.innerHTML = [
+    '<option value="">Sans catégorie</option>',
+    ...state.data.runeCategories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`),
+  ].join('');
+  if ([...categorySelect.options].some((o) => o.value === previousValue)) {
+    categorySelect.value = previousValue;
+  }
 }
 
 document.getElementById('rune-type-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const name = document.getElementById('rune-type-name').value.trim();
   const price = Number(document.getElementById('rune-type-price').value);
+  const categoryId = document.getElementById('rune-type-category').value || null;
   if (!name) return;
-  state.data.runeTypes.push({ id: uid(), name, price: price || 0, categoryId: null });
+  state.data.runeTypes.push({ id: uid(), name, price: price || 0, categoryId });
   saveData();
-  e.target.reset();
+  document.getElementById('rune-type-name').value = '';
+  document.getElementById('rune-type-price').value = '';
   render();
 });
 
