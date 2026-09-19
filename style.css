@@ -365,9 +365,47 @@ tbody tr:hover td.row-actions { background: inherit; }
   align-items: center;
   flex-wrap: wrap;
 }
-.rune-row select { flex: 1; min-width: 140px; }
 .rune-row input { width: 130px; }
 .remove-rune-row-btn { background: transparent; border: none; color: var(--pas-rentable); font-weight: bold; }
+
+.rune-combo {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+.rune-type-search { width: 100%; }
+.rune-type-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(43, 36, 24, 0.2);
+  z-index: 20;
+  padding: 4px 0;
+}
+.rune-option-group-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 2px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.rune-option-group-label .cat-dot { width: 8px; height: 8px; }
+.rune-option {
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+.rune-option:hover, .rune-option.highlighted { background: var(--row-hover); }
+.rune-type-options .empty-state { padding: 10px 12px; text-align: left; }
 
 .detail-panel {
   border: 1px solid var(--border);

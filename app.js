@@ -772,42 +772,129 @@ const sculpteurPage = createCraftPage({
 
 // ---------- Add attempt form ----------
 
-function runeTypeOptionsHtml() {
-  return runeCategoryGroups()
-    .filter((g) => g.runes.length > 0)
-    .map((g) => {
-      const options = g.runes
-        .map((rt) => `<option value="${rt.id}">${escapeHtml(rt.name)}</option>`)
-        .join('');
-      return `<optgroup label="${escapeHtml(g.name)}">${options}</optgroup>`;
-    })
-    .join('');
-}
-
 function buildRuneRow(prefill) {
   const template = document.getElementById('rune-row-template');
   const node = template.content.firstElementChild.cloneNode(true);
-  const select = node.querySelector('.rune-type-select');
-
-  if (state.data.runeTypes.length === 0) {
-    select.innerHTML = '<option value="">Aucune rune définie</option>';
-  } else {
-    select.innerHTML = runeTypeOptionsHtml();
-  }
-
+  const searchInput = node.querySelector('.rune-type-search');
+  const hiddenInput = node.querySelector('.rune-type-select');
+  const optionsPanel = node.querySelector('.rune-type-options');
   const qtyInput = node.querySelector('.rune-qty');
   const priceInput = node.querySelector('.rune-price');
 
+  let highlightIndex = -1;
+
+  function runeName(id) {
+    const rt = state.data.runeTypes.find((r) => r.id === id);
+    return rt ? rt.name : '';
+  }
+
+  function getVisibleOptions() {
+    return [...optionsPanel.querySelectorAll('.rune-option')];
+  }
+
+  function setHighlight(idx) {
+    const opts = getVisibleOptions();
+    opts.forEach((o, i) => o.classList.toggle('highlighted', i === idx));
+    if (opts[idx]) opts[idx].scrollIntoView({ block: 'nearest' });
+  }
+
+  function renderOptions(filterText) {
+    highlightIndex = -1;
+    if (state.data.runeTypes.length === 0) {
+      optionsPanel.innerHTML = '<div class="empty-state small">Aucune rune définie</div>';
+      return;
+    }
+    const q = (filterText || '').trim().toLowerCase();
+    const groups = runeCategoryGroups()
+      .map((g) => ({ ...g, runes: g.runes.filter((rt) => rt.name.toLowerCase().includes(q)) }))
+      .filter((g) => g.runes.length > 0);
+
+    if (groups.length === 0) {
+      optionsPanel.innerHTML = '<div class="empty-state small">Aucun résultat</div>';
+      return;
+    }
+    optionsPanel.innerHTML = groups
+      .map((g) => `
+        <div class="rune-option-group-label">${g.color ? `<span class="cat-dot" style="--cat-color:${g.color}"></span>` : ''}${escapeHtml(g.name)}</div>
+        ${g.runes.map((rt) => `<div class="rune-option" data-id="${rt.id}">${escapeHtml(rt.name)}</div>`).join('')}
+      `)
+      .join('');
+  }
+
+  function openPanel() {
+    renderOptions('');
+    optionsPanel.classList.remove('hidden');
+  }
+
+  function closePanel() {
+    optionsPanel.classList.add('hidden');
+  }
+
   function syncDefaultPrice() {
-    const rt = state.data.runeTypes.find((r) => r.id === select.value);
+    const rt = state.data.runeTypes.find((r) => r.id === hiddenInput.value);
     if (rt && !priceInput.dataset.touched) priceInput.value = rt.price;
   }
 
-  select.addEventListener('change', syncDefaultPrice);
+  function selectRune(id) {
+    hiddenInput.value = id;
+    searchInput.value = runeName(id);
+    closePanel();
+    hiddenInput.dispatchEvent(new Event('change'));
+  }
+
+  hiddenInput.addEventListener('change', syncDefaultPrice);
   priceInput.addEventListener('input', () => { priceInput.dataset.touched = '1'; });
 
+  searchInput.addEventListener('focus', () => {
+    searchInput.select();
+    openPanel();
+  });
+  searchInput.addEventListener('input', () => {
+    hiddenInput.value = '';
+    renderOptions(searchInput.value);
+    optionsPanel.classList.remove('hidden');
+  });
+  searchInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      closePanel();
+      searchInput.value = hiddenInput.value ? runeName(hiddenInput.value) : '';
+    }, 150);
+  });
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (optionsPanel.classList.contains('hidden')) openPanel();
+      const opts = getVisibleOptions();
+      highlightIndex = Math.min(highlightIndex + 1, opts.length - 1);
+      setHighlight(highlightIndex);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      highlightIndex = Math.max(highlightIndex - 1, 0);
+      setHighlight(highlightIndex);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const opts = getVisibleOptions();
+      if (highlightIndex >= 0 && opts[highlightIndex]) selectRune(opts[highlightIndex].dataset.id);
+    } else if (e.key === 'Escape') {
+      closePanel();
+      searchInput.blur();
+    }
+  });
+  optionsPanel.addEventListener('mousedown', (e) => {
+    const opt = e.target.closest('.rune-option');
+    if (!opt) return;
+    e.preventDefault();
+    selectRune(opt.dataset.id);
+  });
+
+  if (state.data.runeTypes.length === 0) {
+    searchInput.disabled = true;
+    searchInput.placeholder = 'Aucune rune définie';
+  }
+
   if (prefill) {
-    select.value = prefill.typeId;
+    hiddenInput.value = prefill.typeId;
+    searchInput.value = runeName(prefill.typeId);
     qtyInput.value = prefill.qty;
     if (prefill.price !== undefined) {
       priceInput.value = prefill.price;

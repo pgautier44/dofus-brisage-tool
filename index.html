@@ -237,7 +237,11 @@
 
 <template id="rune-row-template">
   <div class="rune-row">
-    <select class="rune-type-select"></select>
+    <div class="rune-combo">
+      <input type="text" class="rune-type-search" placeholder="Choisir une rune..." autocomplete="off">
+      <input type="hidden" class="rune-type-select">
+      <div class="rune-type-options hidden"></div>
+    </div>
     <input type="number" class="rune-qty" placeholder="Quantité" min="0" step="1" value="1">
     <input type="number" class="rune-price" placeholder="Prix unitaire" min="0" step="1">
     <button type="button" class="remove-rune-row-btn" title="Supprimer">✕</button>
