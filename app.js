@@ -772,6 +772,18 @@ const sculpteurPage = createCraftPage({
 
 // ---------- Add attempt form ----------
 
+function runeTypeOptionsHtml() {
+  return runeCategoryGroups()
+    .filter((g) => g.runes.length > 0)
+    .map((g) => {
+      const options = g.runes
+        .map((rt) => `<option value="${rt.id}">${escapeHtml(rt.name)}</option>`)
+        .join('');
+      return `<optgroup label="${escapeHtml(g.name)}">${options}</optgroup>`;
+    })
+    .join('');
+}
+
 function buildRuneRow(prefill) {
   const template = document.getElementById('rune-row-template');
   const node = template.content.firstElementChild.cloneNode(true);
@@ -780,9 +792,7 @@ function buildRuneRow(prefill) {
   if (state.data.runeTypes.length === 0) {
     select.innerHTML = '<option value="">Aucune rune définie</option>';
   } else {
-    select.innerHTML = state.data.runeTypes
-      .map((rt) => `<option value="${rt.id}">${escapeHtml(rt.name)}</option>`)
-      .join('');
+    select.innerHTML = runeTypeOptionsHtml();
   }
 
   const qtyInput = node.querySelector('.rune-qty');
