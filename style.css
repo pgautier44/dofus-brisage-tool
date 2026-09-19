@@ -231,15 +231,6 @@ input, select {
 
 .table-wrapper { overflow-x: auto; margin-top: 12px; }
 
-.actions-col,
-td.row-actions {
-  position: sticky;
-  right: 0;
-  z-index: 1;
-  background: var(--panel);
-  box-shadow: -8px 0 12px -8px rgba(43, 36, 24, 0.25);
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -267,12 +258,9 @@ th.sorted::after {
 
 tbody tr:nth-child(even) { background: var(--row-stripe); }
 tbody tr:hover { background: var(--row-hover); }
-tbody tr:nth-child(even) td.row-actions,
-tbody tr:hover td.row-actions { background: inherit; }
 
 #jewelry-table-body tr.jewel-row-opportunity { background: #e6f6e0; }
 #jewelry-table-body tr.jewel-row-opportunity:hover { background: #d7efce; }
-#jewelry-table-body tr.jewel-row-opportunity td.row-actions { background: inherit; }
 
 .badge {
   display: inline-block;
