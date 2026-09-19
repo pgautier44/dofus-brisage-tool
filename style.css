@@ -327,6 +327,38 @@ tbody tr:hover td.row-actions { background: inherit; }
 .rune-type-row.dragging { opacity: 0.4; }
 .rune-type-row.drag-over { border-top: 2px solid var(--accent); }
 
+.rune-category-group {
+  border-left: 4px solid var(--cat-color, var(--no-data));
+  padding-left: 12px;
+  margin-bottom: 18px;
+}
+.rune-category-group.drag-over-group { background: var(--row-hover); }
+.rune-category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.cat-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cat-color, var(--no-data));
+  flex-shrink: 0;
+}
+.remove-category-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--pas-rentable);
+  font-weight: bold;
+  padding: 2px 6px;
+}
+.rune-category-rows .rune-type-row:last-child { border-bottom: none; }
+.empty-state.small { padding: 6px 0; font-size: 0.85rem; }
+
 .rune-row {
   display: flex;
   gap: 10px;

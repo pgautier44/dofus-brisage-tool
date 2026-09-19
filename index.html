@@ -32,12 +32,19 @@
 
   <section class="card hidden" id="rune-types-section" data-tab-panel="runes">
     <h2>Types de runes</h2>
-    <p class="hint">Ajoute ici chaque type de rune que tu peux obtenir en brisant (PA, PM, Vitalité, ...) avec son prix actuel à l'hôtel de vente. Utilise les flèches pour réordonner la liste.</p>
+    <p class="hint">Ajoute ici chaque type de rune que tu peux obtenir en brisant (PA, PM, Vitalité, ...) avec son prix actuel à l'hôtel de vente. Glisse une rune sur une catégorie pour la ranger dedans (et réordonner).</p>
     <div id="rune-types-list"></div>
     <form id="rune-type-form" class="inline-form">
       <input type="text" id="rune-type-name" placeholder="Nom de la rune (ex: Rune Pa)" required>
       <input type="number" id="rune-type-price" placeholder="Prix unitaire (kamas)" min="0" step="1" required>
       <button type="submit">Ajouter une rune</button>
+    </form>
+
+    <h3>Catégories</h3>
+    <p class="hint">Ex : Rune de base, Rune Point, Rune Res, Rune Dommage... Les runes sans catégorie restent dans "Sans catégorie".</p>
+    <form id="rune-category-form" class="inline-form">
+      <input type="text" id="rune-category-name" placeholder="Nom de la catégorie" required>
+      <button type="submit">Ajouter une catégorie</button>
     </form>
   </section>
 
@@ -216,7 +223,7 @@
       <input type="number" class="attempt-craft-qty" min="1" step="1" value="1" required>
     </label>
     <label>Pourcentage de brisage obtenu (%)
-      <input type="number" class="attempt-percent" min="0" max="100" step="0.01" required>
+      <input type="number" class="attempt-percent" min="0" step="0.01" required>
     </label>
     <h4>Runes obtenues</h4>
     <div class="attempt-runes-rows"></div>

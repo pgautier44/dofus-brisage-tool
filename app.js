@@ -33,12 +33,13 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], jewels: [], jewelSales: [] };
+    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], jewels: [], jewelSales: [] };
   }
 
   const d = data.data || {};
   return {
     runeTypes: d.runeTypes || [],
+    runeCategories: d.runeCategories || [],
     items: d.items || [],
     attempts: d.attempts || [],
     sculptorItems: d.sculptorItems || [],
@@ -102,8 +103,10 @@ function showAlert(message) {
   return showModal({ message, confirmLabel: 'OK', cancelLabel: null });
 }
 
+const RUNE_CATEGORY_PALETTE = ['#c9720f', '#2f9e44', '#1971c2', '#9c36b5', '#e8590c', '#0c8599', '#e03131', '#5c940d'];
+
 const state = {
-  data: { runeTypes: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], jewels: [], jewelSales: [] },
+  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], jewels: [], jewelSales: [] },
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
@@ -149,29 +152,82 @@ function classifyRatio(ratio) {
 
 // ---------- Rune types ----------
 
-function renderRuneTypes() {
-  const container = document.getElementById('rune-types-list');
-  if (state.data.runeTypes.length === 0) {
-    container.innerHTML = '<p class="empty-state">Aucun type de rune. Ajoute-en un ci-dessous.</p>';
-    return;
-  }
-  container.innerHTML = '';
-  state.data.runeTypes.forEach((rt) => {
-    const row = document.createElement('div');
-    row.className = 'rune-type-row';
-    row.draggable = true;
-    row.dataset.id = rt.id;
-    row.innerHTML = `
-      <span class="drag-handle" title="Glisser pour réordonner">⠿</span>
+function runeTypeRowHtml(rt) {
+  return `
+    <div class="rune-type-row" draggable="true" data-id="${rt.id}">
+      <span class="drag-handle" title="Glisser pour réordonner / changer de catégorie">⠿</span>
       <span class="rt-name">${escapeHtml(rt.name)}</span>
       <input type="number" min="0" step="1" value="${rt.price}" class="rt-price-input" data-id="${rt.id}">
       <span>kamas</span>
       <button type="button" class="remove-rt-btn" data-id="${rt.id}">Supprimer</button>
+    </div>
+  `;
+}
+
+function runeCategoryGroups() {
+  const categories = state.data.runeCategories;
+  const groups = categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    color: cat.color,
+    runes: state.data.runeTypes.filter((rt) => rt.categoryId === cat.id),
+  }));
+  const uncategorized = state.data.runeTypes.filter(
+    (rt) => !rt.categoryId || !categories.some((c) => c.id === rt.categoryId)
+  );
+  if (uncategorized.length > 0 || categories.length === 0) {
+    groups.push({ id: null, name: 'Sans catégorie', color: null, runes: uncategorized });
+  }
+  return groups;
+}
+
+function renderRuneTypes() {
+  const container = document.getElementById('rune-types-list');
+  if (state.data.runeTypes.length === 0 && state.data.runeCategories.length === 0) {
+    container.innerHTML = '<p class="empty-state">Aucun type de rune. Ajoute-en un ci-dessous.</p>';
+    return;
+  }
+
+  container.innerHTML = runeCategoryGroups().map((g) => {
+    const deleteBtn = g.id
+      ? `<button type="button" class="remove-category-btn" data-id="${g.id}" title="Supprimer la catégorie (les runes repassent en 'Sans catégorie')">✕</button>`
+      : '';
+    const rowsHtml = g.runes.length === 0
+      ? '<p class="empty-state small">Glisse une rune ici</p>'
+      : g.runes.map(runeTypeRowHtml).join('');
+    return `
+      <div class="rune-category-group" data-category-id="${g.id || ''}" style="--cat-color:${g.color || 'var(--no-data)'}">
+        <div class="rune-category-header">
+          <span class="cat-dot"></span>
+          <span class="cat-name">${escapeHtml(g.name)}</span>
+          ${deleteBtn}
+        </div>
+        <div class="rune-category-rows">${rowsHtml}</div>
+      </div>
     `;
-    container.appendChild(row);
-  });
+  }).join('');
 
   let draggedId = null;
+
+  function moveRuneToCategory(targetCategoryId, insertBeforeId) {
+    const arr = state.data.runeTypes;
+    const fromIndex = arr.findIndex((r) => r.id === draggedId);
+    if (fromIndex === -1) return;
+    const [moved] = arr.splice(fromIndex, 1);
+    moved.categoryId = targetCategoryId || null;
+
+    if (insertBeforeId) {
+      const idx = arr.findIndex((r) => r.id === insertBeforeId);
+      arr.splice(idx, 0, moved);
+    } else {
+      let lastIdx = -1;
+      arr.forEach((r, i) => { if (r.categoryId === (targetCategoryId || null)) lastIdx = i; });
+      arr.splice(lastIdx + 1, 0, moved);
+    }
+
+    saveData();
+    render();
+  }
 
   container.querySelectorAll('.rune-type-row').forEach((row) => {
     row.addEventListener('dragstart', (e) => {
@@ -180,8 +236,8 @@ function renderRuneTypes() {
       e.dataTransfer.effectAllowed = 'move';
     });
     row.addEventListener('dragend', () => {
-      row.classList.remove('dragging');
-      container.querySelectorAll('.rune-type-row').forEach((r) => r.classList.remove('drag-over'));
+      container.querySelectorAll('.rune-type-row').forEach((r) => r.classList.remove('dragging', 'drag-over'));
+      container.querySelectorAll('.rune-category-group').forEach((g) => g.classList.remove('drag-over-group'));
     });
     row.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -191,22 +247,31 @@ function renderRuneTypes() {
     row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
     row.addEventListener('drop', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       row.classList.remove('drag-over');
       const targetId = row.dataset.id;
       if (!draggedId || draggedId === targetId) return;
 
-      const arr = state.data.runeTypes;
-      const fromIndex = arr.findIndex((r) => r.id === draggedId);
-      const toIndex = arr.findIndex((r) => r.id === targetId);
+      const targetCategoryId = row.closest('.rune-category-group').dataset.categoryId || null;
       const dropBeforeTarget = e.clientY < row.getBoundingClientRect().top + row.offsetHeight / 2;
+      moveRuneToCategory(targetCategoryId, dropBeforeTarget ? targetId : null);
+    });
+  });
 
-      const [moved] = arr.splice(fromIndex, 1);
-      let insertAt = arr.findIndex((r) => r.id === targetId);
-      if (!dropBeforeTarget) insertAt += 1;
-      arr.splice(insertAt, 0, moved);
-
-      saveData();
-      render();
+  container.querySelectorAll('.rune-category-group').forEach((group) => {
+    group.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!e.target.closest('.rune-type-row')) group.classList.add('drag-over-group');
+    });
+    group.addEventListener('dragleave', (e) => {
+      if (!group.contains(e.relatedTarget)) group.classList.remove('drag-over-group');
+    });
+    group.addEventListener('drop', (e) => {
+      e.preventDefault();
+      group.classList.remove('drag-over-group');
+      if (e.target.closest('.rune-type-row')) return; // handled by the row's own drop listener
+      if (!draggedId) return;
+      moveRuneToCategory(group.dataset.categoryId || null, null);
     });
   });
 
@@ -237,6 +302,19 @@ function renderRuneTypes() {
       render();
     });
   });
+
+  container.querySelectorAll('.remove-category-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.dataset.id;
+      const cat = state.data.runeCategories.find((c) => c.id === id);
+      const ok = await showConfirm(`Supprimer la catégorie "${cat.name}" ? Ses runes repasseront en "Sans catégorie".`, { danger: true });
+      if (!ok) return;
+      state.data.runeTypes.forEach((rt) => { if (rt.categoryId === id) rt.categoryId = null; });
+      state.data.runeCategories = state.data.runeCategories.filter((c) => c.id !== id);
+      saveData();
+      render();
+    });
+  });
 }
 
 document.getElementById('rune-type-form').addEventListener('submit', (e) => {
@@ -244,7 +322,18 @@ document.getElementById('rune-type-form').addEventListener('submit', (e) => {
   const name = document.getElementById('rune-type-name').value.trim();
   const price = Number(document.getElementById('rune-type-price').value);
   if (!name) return;
-  state.data.runeTypes.push({ id: uid(), name, price: price || 0 });
+  state.data.runeTypes.push({ id: uid(), name, price: price || 0, categoryId: null });
+  saveData();
+  e.target.reset();
+  render();
+});
+
+document.getElementById('rune-category-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.getElementById('rune-category-name').value.trim();
+  if (!name) return;
+  const color = RUNE_CATEGORY_PALETTE[state.data.runeCategories.length % RUNE_CATEGORY_PALETTE.length];
+  state.data.runeCategories.push({ id: uid(), name, color });
   saveData();
   e.target.reset();
   render();
