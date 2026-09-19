@@ -293,6 +293,16 @@ tbody tr:hover td.row-actions { background: inherit; }
 .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .row-actions button { padding: 6px 10px; font-size: 0.82rem; }
 
+.clickable-row { cursor: pointer; }
+.expand-arrow {
+  display: inline-block;
+  width: 0.9em;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+.name-link { cursor: pointer; }
+.name-link:hover { color: var(--accent); text-decoration: underline; }
+
 .rune-type-row {
   display: flex;
   align-items: center;

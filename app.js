@@ -387,10 +387,14 @@ function renderItemsTable() {
       const ratioLabel = stats.ratio !== null ? formatPercent(stats.ratio * 100, 0) : '—';
       const netGainCls = stats.netGain === null ? '' : stats.netGain >= 0 ? 'gain-positive' : 'gain-negative';
       const netGainLabel = stats.netGain === null ? '—' : (stats.netGain >= 0 ? '+' : '') + formatKamas(stats.netGain);
+      const isOpen = state.openDetailItemId === item.id;
       return `
-        <tr data-item-id="${item.id}">
-          <td>${escapeHtml(item.name)}</td>
-          <td title="Moyenne calculée à partir des essais — pour corriger une valeur, ouvre 'Détails' puis 'Modifier' sur l'essai concerné">${formatKamas(stats.unitCraftCost)}</td>
+        <tr data-item-id="${item.id}" class="clickable-row">
+          <td>
+            <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
+            <span class="name-link" title="Cliquer pour renommer">${escapeHtml(item.name)}</span>
+          </td>
+          <td title="Moyenne calculée à partir des essais — pour corriger une valeur, ouvre le détail puis 'Modifier' sur l'essai concerné">${formatKamas(stats.unitCraftCost)}</td>
           <td>${stats.count}</td>
           <td>${formatPercent(stats.avgPercent)}</td>
           <td>${formatKamas(stats.avgValue)}</td>
@@ -401,8 +405,6 @@ function renderItemsTable() {
           </td>
           <td class="row-actions">
             <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
-            <button type="button" class="edit-item-btn" data-id="${item.id}">Renommer</button>
-            <button type="button" class="toggle-detail-btn" data-id="${item.id}">Détails</button>
             <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
           </td>
         </tr>
@@ -411,18 +413,20 @@ function renderItemsTable() {
     }).join('');
   }
 
-  tbody.querySelectorAll('.add-attempt-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openAddAttemptForm(e.target.dataset.id));
-  });
-  tbody.querySelectorAll('.edit-item-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openEditItemForm(e.target.dataset.id));
-  });
-  tbody.querySelectorAll('.toggle-detail-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const id = e.target.dataset.id;
+  tbody.querySelectorAll('tr[data-item-id]').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      const id = row.dataset.itemId;
+      if (e.target.closest('.row-actions')) return;
+      if (e.target.closest('.name-link')) {
+        openEditItemForm(id);
+        return;
+      }
       state.openDetailItemId = state.openDetailItemId === id ? null : id;
       renderItemsTable();
     });
+  });
+  tbody.querySelectorAll('.add-attempt-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => openAddAttemptForm(e.target.dataset.id));
   });
   tbody.querySelectorAll('.edit-attempt-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => openEditAttemptForm(e.target.dataset.id));
@@ -883,9 +887,13 @@ function renderJewelryTable() {
       const opportunityIcon = isOpportunity
         ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
         : '';
+      const isOpen = state.openJewelDetailId === jewel.id;
       return `
-        <tr data-jewel-id="${jewel.id}" class="${isOpportunity ? 'jewel-row-opportunity' : ''}">
-          <td>${opportunityIcon}${escapeHtml(jewel.name)}</td>
+        <tr data-jewel-id="${jewel.id}" class="clickable-row${isOpportunity ? ' jewel-row-opportunity' : ''}">
+          <td>
+            <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
+            ${opportunityIcon}<span class="name-link" title="Cliquer pour renommer">${escapeHtml(jewel.name)}</span>
+          </td>
           <td>${formatKamas(stats.avgPurchasePrice)}</td>
           <td>${stats.count}</td>
           <td>${delayLabel}</td>
@@ -896,8 +904,6 @@ function renderJewelryTable() {
           </td>
           <td class="row-actions">
             <button type="button" class="add-jewel-sale-btn primary-btn" data-id="${jewel.id}">+ Nouvel achat</button>
-            <button type="button" class="edit-jewel-btn" data-id="${jewel.id}">Renommer</button>
-            <button type="button" class="toggle-jewel-detail-btn" data-id="${jewel.id}">Détails</button>
             <button type="button" class="delete-jewel-btn" data-id="${jewel.id}">Supprimer</button>
           </td>
         </tr>
@@ -906,18 +912,20 @@ function renderJewelryTable() {
     }).join('');
   }
 
-  tbody.querySelectorAll('.add-jewel-sale-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openAddJewelSaleForm(e.target.dataset.id));
-  });
-  tbody.querySelectorAll('.edit-jewel-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openEditJewelForm(e.target.dataset.id));
-  });
-  tbody.querySelectorAll('.toggle-jewel-detail-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const id = e.target.dataset.id;
+  tbody.querySelectorAll('tr[data-jewel-id]').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      const id = row.dataset.jewelId;
+      if (e.target.closest('.row-actions')) return;
+      if (e.target.closest('.name-link')) {
+        openEditJewelForm(id);
+        return;
+      }
       state.openJewelDetailId = state.openJewelDetailId === id ? null : id;
       renderJewelryTable();
     });
+  });
+  tbody.querySelectorAll('.add-jewel-sale-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => openAddJewelSaleForm(e.target.dataset.id));
   });
   tbody.querySelectorAll('.edit-jewel-sale-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => openEditJewelSaleForm(e.target.dataset.id));
