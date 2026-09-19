@@ -791,7 +791,6 @@ function classifyJewelRatio(ratio) {
 
 document.getElementById('show-add-jewel-btn').addEventListener('click', () => {
   document.getElementById('add-jewel-form').classList.toggle('hidden');
-  document.getElementById('jewel-listed-date').value = todayISODate();
 });
 
 document.getElementById('jewel-search').addEventListener('input', (e) => {
@@ -803,8 +802,8 @@ document.getElementById('add-jewel-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const name = document.getElementById('jewel-name').value.trim();
   const purchasePrice = Number(document.getElementById('jewel-purchase-price').value) || 0;
-  const listedDate = document.getElementById('jewel-listed-date').value;
-  if (!name || !listedDate) return;
+  const listedDate = todayISODate();
+  if (!name) return;
   const jewelId = uid();
   state.data.jewels.push({ id: jewelId, name });
   state.data.jewelSales.push({
@@ -980,23 +979,21 @@ function buildJewelSaleForm(jewelName, prefillSale) {
 
   if (prefillSale) {
     form.querySelector('.jewel-purchase-price').value = prefillSale.purchasePrice;
-    form.querySelector('.jewel-listed-date').value = prefillSale.listedDate;
     if (prefillSale.salePrice !== null && prefillSale.salePrice !== undefined) {
       form.querySelector('.jewel-sale-price').value = prefillSale.salePrice;
     }
-  } else {
-    form.querySelector('.jewel-listed-date').value = todayISODate();
   }
 
   return form;
 }
 
-// La date de vente n'est jamais saisie : elle passe à aujourd'hui dès qu'un prix de
-// vente est renseigné pour la première fois, et reste figée ensuite (on ne la remet
-// pas à jour si on corrige juste le prix d'une vente déjà enregistrée).
+// Ni la date de mise en vente ni la date de vente ne se saisissent : la première
+// passe à aujourd'hui à la création puis reste figée, la seconde passe à aujourd'hui
+// dès qu'un prix de vente est renseigné pour la première fois et reste figée ensuite
+// (on ne les remet pas à jour si on corrige juste un prix sur une ligne existante).
 function readJewelSaleForm(form, existingSale) {
   const purchasePrice = Number(form.querySelector('.jewel-purchase-price').value) || 0;
-  const listedDate = form.querySelector('.jewel-listed-date').value;
+  const listedDate = (existingSale && existingSale.listedDate) || todayISODate();
   const salePriceRaw = form.querySelector('.jewel-sale-price').value;
   const salePrice = salePriceRaw === '' ? null : Number(salePriceRaw);
   const saleDate = salePrice === null ? null : (existingSale && existingSale.saleDate) || todayISODate();
