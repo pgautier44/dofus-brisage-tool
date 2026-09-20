@@ -1505,6 +1505,116 @@ document.getElementById('jewelry-refresh-btn').addEventListener('click', async (
   btn.disabled = false;
 });
 
+// ---------- Rune price impact simulator ----------
+// Answers "if this rune's price changes, which items should I prioritize
+// breaking?" — recomputes each item's profitability with a hypothetical
+// price for one rune type, using its known essais otherwise unchanged.
+
+const SIMULATOR_PAGES = [
+  { key: 'items', label: 'Rune Pa', itemsKey: 'items', attemptsKey: 'attempts' },
+  { key: 'sculpteur', label: 'Sculpteur', itemsKey: 'sculptorItems', attemptsKey: 'sculptorAttempts' },
+  { key: 'forgeron', label: 'Forgeron', itemsKey: 'forgeronItems', attemptsKey: 'forgeronAttempts' },
+];
+
+document.getElementById('sim-page-select').innerHTML =
+  '<option value="">Choisir une page...</option>' +
+  SIMULATOR_PAGES.map((p) => `<option value="${p.key}">${escapeHtml(p.label)}</option>`).join('');
+
+function renderSimulatorRuneOptions() {
+  const select = document.getElementById('sim-rune-select');
+  const previousValue = select.value;
+  const groups = runeCategoryGroups().filter((g) => g.runes.length > 0);
+
+  select.innerHTML =
+    '<option value="">Choisir une rune...</option>' +
+    groups
+      .map((g) => {
+        const options = g.runes.map((rt) => `<option value="${rt.id}">${escapeHtml(rt.name)}</option>`).join('');
+        return `<optgroup label="${escapeHtml(g.name)}">${options}</optgroup>`;
+      })
+      .join('');
+
+  if ([...select.options].some((o) => o.value === previousValue)) {
+    select.value = previousValue;
+  }
+}
+
+function simulatedAttemptValue(attempt, overrideTypeId, overridePrice) {
+  return attempt.runes.reduce((sum, r) => {
+    const line = r.typeId === overrideTypeId ? { ...r, price: overridePrice } : r;
+    return sum + runeLineValue(line);
+  }, 0);
+}
+
+function runSimulator() {
+  const pageKey = document.getElementById('sim-page-select').value;
+  const runeTypeId = document.getElementById('sim-rune-select').value;
+  const priceInput = document.getElementById('sim-price-input');
+  const tbody = document.getElementById('sim-results-body');
+
+  const pageCfg = SIMULATOR_PAGES.find((p) => p.key === pageKey);
+  if (!pageCfg || !runeTypeId || priceInput.value === '') {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Choisis une page, une rune et un prix pour voir les objets concernés.</td></tr>';
+    return;
+  }
+
+  const overridePrice = Number(priceInput.value) || 0;
+  const items = state.data[pageCfg.itemsKey];
+  const attempts = state.data[pageCfg.attemptsKey];
+
+  const rows = items
+    .map((item) => {
+      const atts = attempts.filter((a) => a.itemId === item.id);
+      const hasRune = atts.some((a) => a.runes.some((r) => r.typeId === runeTypeId));
+      if (atts.length === 0 || !hasRune) return null;
+
+      const avgCraftCost = atts.reduce((s, a) => s + a.craftCost, 0) / atts.length;
+      const currentAvgValue = atts.reduce((s, a) => s + attemptValue(a), 0) / atts.length;
+      const simAvgValue = atts.reduce((s, a) => s + simulatedAttemptValue(a, runeTypeId, overridePrice), 0) / atts.length;
+
+      const currentRatio = avgCraftCost ? currentAvgValue / avgCraftCost : null;
+      const simRatio = avgCraftCost ? simAvgValue / avgCraftCost : null;
+      const simNetGain = simAvgValue - avgCraftCost;
+
+      return { item, count: atts.length, currentRatio, simRatio, simNetGain };
+    })
+    .filter(Boolean);
+
+  rows.sort((a, b) => {
+    if (a.simRatio === null) return 1;
+    if (b.simRatio === null) return -1;
+    return b.simRatio - a.simRatio;
+  });
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Aucun objet de cette page n\'a produit cette rune jusqu\'ici.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows
+    .map(({ item, count, currentRatio, simRatio, simNetGain }) => {
+      const cat = classifyRatio(simRatio);
+      const simRatioLabel = simRatio !== null ? formatPercent(simRatio * 100, 0) : '—';
+      const currentRatioLabel = currentRatio !== null ? formatPercent(currentRatio * 100, 0) : '—';
+      const gainCls = simNetGain >= 0 ? 'gain-positive' : 'gain-negative';
+      const gainLabel = (simNetGain >= 0 ? '+' : '') + formatKamas(simNetGain);
+      return `
+        <tr>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${count}</td>
+          <td>${currentRatioLabel}</td>
+          <td><span class="badge ${cat.cls}">${simRatioLabel}</span></td>
+          <td class="${gainCls}">${gainLabel}</td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
+document.getElementById('sim-page-select').addEventListener('change', runSimulator);
+document.getElementById('sim-rune-select').addEventListener('change', runSimulator);
+document.getElementById('sim-price-input').addEventListener('input', runSimulator);
+
 // ---------- Utils ----------
 
 function escapeHtml(str) {
@@ -1521,6 +1631,8 @@ function render() {
   forgeronPage.renderTable();
   renderJewelryTable();
   renderJewelryTotals();
+  renderSimulatorRuneOptions();
+  runSimulator();
 }
 
 // ---------- Legacy localStorage import (pre-Supabase data left on a browser) ----------

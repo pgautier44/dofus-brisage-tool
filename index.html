@@ -20,6 +20,7 @@
     <button type="button" class="tab-btn" data-tab="forgeron" role="tab" aria-selected="false">Forgeron</button>
     <button type="button" class="tab-btn" data-tab="jewelry" role="tab" aria-selected="false">Bijoutier/Joaillo</button>
     <button type="button" class="tab-btn" data-tab="runes" role="tab" aria-selected="false">Types de runes</button>
+    <button type="button" class="tab-btn" data-tab="simulator" role="tab" aria-selected="false">Simulateur</button>
   </div>
 
   <section class="card legacy-banner hidden" id="legacy-import-banner">
@@ -307,6 +308,44 @@
     <p class="hint">Tant qu'un bijou n'est pas vendu, son prix d'achat compte en négatif (capital immobilisé) ; une fois vendu, c'est le gain réel (vente − achat) qui compte.</p>
   </section>
 
+  <section class="card hidden" id="simulator-section" data-tab-panel="simulator">
+    <h2>Simulateur de prix de rune</h2>
+    <p class="hint">Choisis une page, une rune, et un nouveau prix pour cette rune : les objets de cette page qui en donnent s'affichent triés par rentabilité simulée, pour savoir lesquels prioriser suite à une variation de prix.</p>
+
+    <div class="panel">
+      <label>Page
+        <select id="sim-page-select">
+          <option value="">Choisir une page...</option>
+        </select>
+      </label>
+      <label>Rune
+        <select id="sim-rune-select">
+          <option value="">Choisir une rune...</option>
+        </select>
+      </label>
+      <label>Nouveau prix de la rune (kamas)
+        <input type="number" id="sim-price-input" min="0" step="1" placeholder="Ex : 20000">
+      </label>
+    </div>
+
+    <div class="table-wrapper">
+      <table id="sim-results-table">
+        <thead>
+          <tr>
+            <th>Objet</th>
+            <th>Nb essais</th>
+            <th>Rentabilité actuelle</th>
+            <th>Rentabilité simulée</th>
+            <th>Gain net simulé</th>
+          </tr>
+        </thead>
+        <tbody id="sim-results-body">
+          <tr><td colspan="5" class="empty-state">Choisis une page, une rune et un prix pour voir les objets concernés.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
 
 </main>
 
@@ -399,6 +438,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260920d"></script>
+<script src="app.js?v=20260920e"></script>
 </body>
 </html>
