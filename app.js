@@ -1094,7 +1094,7 @@ function computeJewelStats(jewel) {
 
   let avgPurchasePrice = null;
   let avgDelay = null;
-  let avgGain = null;
+  let totalGain = null;
   let avgRatio = null;
 
   if (count > 0) {
@@ -1103,12 +1103,12 @@ function computeJewelStats(jewel) {
   if (soldCount > 0) {
     const totalPurchase = soldSales.reduce((s, e) => s + e.purchasePrice, 0);
     const totalSale = soldSales.reduce((s, e) => s + e.salePrice, 0);
-    avgGain = (totalSale - totalPurchase) / soldCount;
+    totalGain = totalSale - totalPurchase;
     avgDelay = soldSales.reduce((s, e) => s + jewelSaleDelay(e), 0) / soldCount;
     avgRatio = totalPurchase > 0 ? totalSale / totalPurchase : null;
   }
 
-  return { count, soldCount, avgPurchasePrice, avgDelay, avgGain, avgRatio };
+  return { count, soldCount, avgPurchasePrice, avgDelay, totalGain, avgRatio };
 }
 
 function classifyJewelRatio(ratio) {
@@ -1169,9 +1169,9 @@ function sortedJewels() {
         va = a.stats.avgDelay;
         vb = b.stats.avgDelay;
         break;
-      case 'avgGain':
-        va = a.stats.avgGain;
-        vb = b.stats.avgGain;
+      case 'totalGain':
+        va = a.stats.totalGain;
+        vb = b.stats.totalGain;
         break;
       case 'avgRatio':
       default:
@@ -1202,8 +1202,8 @@ function renderJewelryTable() {
     tbody.innerHTML = rows.map(({ jewel, stats }) => {
       const cat = classifyJewelRatio(stats.avgRatio);
       const ratioLabel = stats.avgRatio !== null ? formatPercent(stats.avgRatio * 100, 0) : '—';
-      const gainCls = stats.avgGain === null ? '' : stats.avgGain >= 0 ? 'gain-positive' : 'gain-negative';
-      const gainLabel = stats.avgGain === null ? '—' : (stats.avgGain >= 0 ? '+' : '') + formatKamas(stats.avgGain);
+      const gainCls = stats.totalGain === null ? '' : stats.totalGain >= 0 ? 'gain-positive' : 'gain-negative';
+      const gainLabel = stats.totalGain === null ? '—' : (stats.totalGain >= 0 ? '+' : '') + formatKamas(stats.totalGain);
       const delayLabel = stats.avgDelay === null ? '—' : Math.round(stats.avgDelay) + ' j';
       // Tout est vendu (aucun bijou actuellement en vente) et le rendement est positif :
       // bon candidat pour relancer un achat.
