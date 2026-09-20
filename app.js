@@ -33,7 +33,7 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], jewels: [], jewelSales: [] };
+    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [] };
   }
 
   const d = data.data || {};
@@ -44,6 +44,8 @@ async function loadData() {
     attempts: d.attempts || [],
     sculptorItems: d.sculptorItems || [],
     sculptorAttempts: d.sculptorAttempts || [],
+    forgeronItems: d.forgeronItems || [],
+    forgeronAttempts: d.forgeronAttempts || [],
     jewels: d.jewels || [],
     jewelSales: d.jewelSales || [],
   };
@@ -106,13 +108,16 @@ function showAlert(message) {
 const RUNE_CATEGORY_PALETTE = ['#c9720f', '#2f9e44', '#1971c2', '#9c36b5', '#e8590c', '#0c8599', '#e03131', '#5c940d'];
 
 const state = {
-  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], jewels: [], jewelSales: [] },
+  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [] },
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
   sculptorSort: { column: 'ratio', direction: 'desc' },
   openSculptorDetailId: null,
   sculptorSearchQuery: '',
+  forgeronSort: { column: 'ratio', direction: 'desc' },
+  openForgeronDetailId: null,
+  forgeronSearchQuery: '',
   jewelrySort: { column: 'avgRatio', direction: 'desc' },
   openJewelDetailId: null,
   jewelrySearchQuery: '',
@@ -858,6 +863,24 @@ const sculpteurPage = createCraftPage({
   totalNetElId: 'sculptor-total-net',
 });
 
+const forgeronPage = createCraftPage({
+  itemsKey: 'forgeronItems',
+  attemptsKey: 'forgeronAttempts',
+  sortKey: 'forgeronSort',
+  searchKey: 'forgeronSearchQuery',
+  openDetailKey: 'openForgeronDetailId',
+  tableId: 'forgeron-table',
+  tableBodyId: 'forgeron-table-body',
+  addItemFormId: 'add-forgeron-item-form',
+  itemNameInputId: 'forgeron-item-name',
+  showAddItemBtnId: 'show-add-forgeron-item-btn',
+  searchInputId: 'forgeron-search',
+  refreshBtnId: 'forgeron-refresh-btn',
+  totalCostElId: 'forgeron-total-cost',
+  totalValueElId: 'forgeron-total-value',
+  totalNetElId: 'forgeron-total-net',
+});
+
 // ---------- Add attempt form ----------
 
 function buildRuneRow(prefill) {
@@ -1495,6 +1518,7 @@ function render() {
   closeInlineForms();
   runePaPage.renderTable();
   sculpteurPage.renderTable();
+  forgeronPage.renderTable();
   renderJewelryTable();
   renderJewelryTotals();
 }
