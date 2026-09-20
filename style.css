@@ -311,6 +311,12 @@ tbody tr:hover { background: var(--row-hover); }
 }
 .rt-price-field input[type="number"] { width: 90px; }
 
+.sim-price-fields {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .drag-handle {
   cursor: grab;
   color: var(--text-dim);

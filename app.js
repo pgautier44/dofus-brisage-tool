@@ -1539,26 +1539,54 @@ function renderSimulatorRuneOptions() {
   }
 }
 
-function simulatedAttemptValue(attempt, overrideTypeId, overridePrice) {
-  return attempt.runes.reduce((sum, r) => {
-    const line = r.typeId === overrideTypeId ? { ...r, price: overridePrice } : r;
-    return sum + runeLineValue(line);
-  }, 0);
+// Same greedy tiering as runeLineValue (max x9 groups, then x3 on the
+// remainder, then simple price on what's left), but against hypothetical
+// simple/x3/x9 prices instead of the rune type's stored ones.
+function simulatedRuneLineValue(r, overrideTypeId, overrides) {
+  if (r.typeId !== overrideTypeId) return runeLineValue(r);
+
+  let qty = r.qty;
+  const n9 = overrides.x9 ? Math.floor(qty / 9) : 0;
+  qty -= n9 * 9;
+  const n3 = overrides.x3 ? Math.floor(qty / 3) : 0;
+  qty -= n3 * 3;
+  const n1 = qty;
+
+  return n9 * (overrides.x9 || 0) + n3 * (overrides.x3 || 0) + n1 * overrides.simple;
 }
+
+function simulatedAttemptValue(attempt, overrideTypeId, overrides) {
+  return attempt.runes.reduce((sum, r) => sum + simulatedRuneLineValue(r, overrideTypeId, overrides), 0);
+}
+
+document.getElementById('sim-rune-select').addEventListener('change', () => {
+  const runeTypeId = document.getElementById('sim-rune-select').value;
+  const rt = state.data.runeTypes.find((r) => r.id === runeTypeId);
+  document.getElementById('sim-price-input').value = rt ? rt.price : '';
+  document.getElementById('sim-price-x3-input').value = rt && rt.x3Price ? rt.x3Price : '';
+  document.getElementById('sim-price-x9-input').value = rt && rt.x9Price ? rt.x9Price : '';
+  runSimulator();
+});
 
 function runSimulator() {
   const pageKey = document.getElementById('sim-page-select').value;
   const runeTypeId = document.getElementById('sim-rune-select').value;
   const priceInput = document.getElementById('sim-price-input');
+  const priceX3Input = document.getElementById('sim-price-x3-input');
+  const priceX9Input = document.getElementById('sim-price-x9-input');
   const tbody = document.getElementById('sim-results-body');
 
   const pageCfg = SIMULATOR_PAGES.find((p) => p.key === pageKey);
   if (!pageCfg || !runeTypeId || priceInput.value === '') {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Choisis une page, une rune et un prix pour voir les objets concernés.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Choisis une page, une rune et un prix simple pour voir les objets concernés.</td></tr>';
     return;
   }
 
-  const overridePrice = Number(priceInput.value) || 0;
+  const overrides = {
+    simple: Number(priceInput.value) || 0,
+    x3: priceX3Input.value === '' ? null : Number(priceX3Input.value) || 0,
+    x9: priceX9Input.value === '' ? null : Number(priceX9Input.value) || 0,
+  };
   const items = state.data[pageCfg.itemsKey];
   const attempts = state.data[pageCfg.attemptsKey];
 
@@ -1570,7 +1598,7 @@ function runSimulator() {
 
       const avgCraftCost = atts.reduce((s, a) => s + a.craftCost, 0) / atts.length;
       const currentAvgValue = atts.reduce((s, a) => s + attemptValue(a), 0) / atts.length;
-      const simAvgValue = atts.reduce((s, a) => s + simulatedAttemptValue(a, runeTypeId, overridePrice), 0) / atts.length;
+      const simAvgValue = atts.reduce((s, a) => s + simulatedAttemptValue(a, runeTypeId, overrides), 0) / atts.length;
 
       const currentRatio = avgCraftCost ? currentAvgValue / avgCraftCost : null;
       const simRatio = avgCraftCost ? simAvgValue / avgCraftCost : null;
@@ -1612,8 +1640,9 @@ function runSimulator() {
 }
 
 document.getElementById('sim-page-select').addEventListener('change', runSimulator);
-document.getElementById('sim-rune-select').addEventListener('change', runSimulator);
 document.getElementById('sim-price-input').addEventListener('input', runSimulator);
+document.getElementById('sim-price-x3-input').addEventListener('input', runSimulator);
+document.getElementById('sim-price-x9-input').addEventListener('input', runSimulator);
 
 // ---------- Utils ----------
 

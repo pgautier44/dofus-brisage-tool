@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20260919e">
+<link rel="stylesheet" href="style.css?v=20260920f">
 </head>
 <body class="loading">
 <header>
@@ -310,7 +310,7 @@
 
   <section class="card hidden" id="simulator-section" data-tab-panel="simulator">
     <h2>Simulateur de prix de rune</h2>
-    <p class="hint">Choisis une page, une rune, et un nouveau prix pour cette rune : les objets de cette page qui en donnent s'affichent triés par rentabilité simulée, pour savoir lesquels prioriser suite à une variation de prix.</p>
+    <p class="hint">Choisis une page et une rune, puis ajuste ses prix simple / Pa (x3) / Ra (x9) : les objets de cette page qui en donnent s'affichent triés par rentabilité simulée, pour savoir lesquels prioriser suite à une variation de prix. Les champs sont préremplis avec les prix actuels de la rune, modifie uniquement ceux qui changent.</p>
 
     <div class="panel">
       <label>Page
@@ -323,9 +323,17 @@
           <option value="">Choisir une rune...</option>
         </select>
       </label>
-      <label>Nouveau prix de la rune (kamas)
-        <input type="number" id="sim-price-input" min="0" step="1" placeholder="Ex : 20000">
-      </label>
+      <div class="sim-price-fields">
+        <label>Prix simple (kamas)
+          <input type="number" id="sim-price-input" min="0" step="1" placeholder="Ex : 20000">
+        </label>
+        <label>Prix Pa / x3 (kamas)
+          <input type="number" id="sim-price-x3-input" min="0" step="1" placeholder="Non défini">
+        </label>
+        <label>Prix Ra / x9 (kamas)
+          <input type="number" id="sim-price-x9-input" min="0" step="1" placeholder="Non défini">
+        </label>
+      </div>
     </div>
 
     <div class="table-wrapper">
@@ -438,6 +446,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260920e"></script>
+<script src="app.js?v=20260920f"></script>
 </body>
 </html>
