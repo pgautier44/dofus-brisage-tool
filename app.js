@@ -450,6 +450,7 @@ function createCraftPage(cfg) {
     let avgValue = null; // average TOTAL rune value obtained, per essai
     let ratio = null;
     let netGain = null;
+    let totalGain = null; // cumulative net gain across every essai for this item
 
     if (count > 0) {
       const unitCosts = atts.map(attemptUnitCraftCost).filter((c) => c !== null);
@@ -458,6 +459,7 @@ function createCraftPage(cfg) {
       avgCraftCost = atts.reduce((s, a) => s + a.craftCost, 0) / count;
       avgPercent = atts.reduce((s, a) => s + a.percent, 0) / count;
       avgValue = atts.reduce((s, a) => s + attemptValue(a), 0) / count;
+      totalGain = atts.reduce((s, a) => s + (attemptValue(a) - a.craftCost), 0);
 
       if (avgCraftCost) {
         ratio = avgValue / avgCraftCost;
@@ -465,7 +467,7 @@ function createCraftPage(cfg) {
       }
     }
 
-    return { unitCraftCost, avgCraftCost, count, avgPercent, avgValue, ratio, netGain };
+    return { unitCraftCost, avgCraftCost, count, avgPercent, avgValue, ratio, netGain, totalGain };
   }
 
   function knownRuneTypeIds(itemId) {
@@ -505,9 +507,9 @@ function createCraftPage(cfg) {
           va = a.stats.avgPercent;
           vb = b.stats.avgPercent;
           break;
-        case 'avgValue':
-          va = a.stats.avgValue;
-          vb = b.stats.avgValue;
+        case 'totalGain':
+          va = a.stats.totalGain;
+          vb = b.stats.totalGain;
           break;
         case 'ratio':
           va = a.stats.ratio;
@@ -692,6 +694,8 @@ function createCraftPage(cfg) {
         const ratioLabel = stats.ratio !== null ? formatPercent(stats.ratio * 100, 0) : '—';
         const netGainCls = stats.netGain === null ? '' : stats.netGain >= 0 ? 'gain-positive' : 'gain-negative';
         const netGainLabel = stats.netGain === null ? '—' : (stats.netGain >= 0 ? '+' : '') + formatKamas(stats.netGain);
+        const totalGainCls = stats.totalGain === null ? '' : stats.totalGain >= 0 ? 'gain-positive' : 'gain-negative';
+        const totalGainLabel = stats.totalGain === null ? '—' : (stats.totalGain >= 0 ? '+' : '') + formatKamas(stats.totalGain);
         const isOpen = state[cfg.openDetailKey] === item.id;
         return `
           <tr data-item-id="${item.id}" class="clickable-row">
@@ -702,7 +706,7 @@ function createCraftPage(cfg) {
             <td title="Moyenne calculée à partir des essais — pour corriger une valeur, ouvre le détail puis 'Modifier' sur l'essai concerné">${formatKamas(stats.unitCraftCost)}</td>
             <td>${stats.count}</td>
             <td>${formatPercent(stats.avgPercent)}</td>
-            <td>${formatKamas(stats.avgValue)}</td>
+            <td class="${totalGainCls}" title="Somme des gains nets (valeur des runes − coût de craft) sur tous les essais de cet objet">${totalGainLabel}</td>
             <td class="${netGainCls}">${netGainLabel}</td>
             <td>
               <span class="badge ${cat.cls}">${cat.label}</span>
