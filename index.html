@@ -310,14 +310,9 @@
 
   <section class="card hidden" id="simulator-section" data-tab-panel="simulator">
     <h2>Simulateur de prix de rune</h2>
-    <p class="hint">Choisis une page et une rune, puis ajuste ses prix simple / Pa (x3) / Ra (x9) : les objets de cette page qui en donnent s'affichent triés par rentabilité simulée, pour savoir lesquels prioriser suite à une variation de prix. Les champs sont préremplis avec les prix actuels de la rune, modifie uniquement ceux qui changent.</p>
+    <p class="hint">Choisis une rune puis ajuste ses prix simple / Pa (x3) / Ra (x9) : tous les objets (Rune Pa, Sculpteur, Forgeron) qui en donnent s'affichent triés par rentabilité simulée, pour savoir lesquels prioriser suite à une variation de prix. Les runes des autres types gardent leur valeur actuelle. Les champs sont préremplis avec les prix actuels de la rune, modifie uniquement ceux qui changent.</p>
 
     <div class="panel">
-      <label>Page
-        <select id="sim-page-select">
-          <option value="">Choisir une page...</option>
-        </select>
-      </label>
       <label>Rune
         <select id="sim-rune-select">
           <option value="">Choisir une rune...</option>
@@ -341,6 +336,7 @@
         <thead>
           <tr>
             <th>Objet</th>
+            <th>Page</th>
             <th>Nb essais</th>
             <th>Rentabilité actuelle</th>
             <th>Rentabilité simulée</th>
@@ -348,7 +344,7 @@
           </tr>
         </thead>
         <tbody id="sim-results-body">
-          <tr><td colspan="5" class="empty-state">Choisis une page, une rune et un prix pour voir les objets concernés.</td></tr>
+          <tr><td colspan="6" class="empty-state">Choisis une rune et un prix pour voir les objets concernés.</td></tr>
         </tbody>
       </table>
     </div>
@@ -446,6 +442,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260920f"></script>
+<script src="app.js?v=20260921"></script>
 </body>
 </html>

@@ -1516,10 +1516,6 @@ const SIMULATOR_PAGES = [
   { key: 'forgeron', label: 'Forgeron', itemsKey: 'forgeronItems', attemptsKey: 'forgeronAttempts' },
 ];
 
-document.getElementById('sim-page-select').innerHTML =
-  '<option value="">Choisir une page...</option>' +
-  SIMULATOR_PAGES.map((p) => `<option value="${p.key}">${escapeHtml(p.label)}</option>`).join('');
-
 function renderSimulatorRuneOptions() {
   const select = document.getElementById('sim-rune-select');
   const previousValue = select.value;
@@ -1569,16 +1565,14 @@ document.getElementById('sim-rune-select').addEventListener('change', () => {
 });
 
 function runSimulator() {
-  const pageKey = document.getElementById('sim-page-select').value;
   const runeTypeId = document.getElementById('sim-rune-select').value;
   const priceInput = document.getElementById('sim-price-input');
   const priceX3Input = document.getElementById('sim-price-x3-input');
   const priceX9Input = document.getElementById('sim-price-x9-input');
   const tbody = document.getElementById('sim-results-body');
 
-  const pageCfg = SIMULATOR_PAGES.find((p) => p.key === pageKey);
-  if (!pageCfg || !runeTypeId || priceInput.value === '') {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Choisis une page, une rune et un prix simple pour voir les objets concernés.</td></tr>';
+  if (!runeTypeId || priceInput.value === '') {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Choisis une rune et un prix pour voir les objets concernés.</td></tr>';
     return;
   }
 
@@ -1587,26 +1581,29 @@ function runSimulator() {
     x3: priceX3Input.value === '' ? null : Number(priceX3Input.value) || 0,
     x9: priceX9Input.value === '' ? null : Number(priceX9Input.value) || 0,
   };
-  const items = state.data[pageCfg.itemsKey];
-  const attempts = state.data[pageCfg.attemptsKey];
 
-  const rows = items
-    .map((item) => {
-      const atts = attempts.filter((a) => a.itemId === item.id);
-      const hasRune = atts.some((a) => a.runes.some((r) => r.typeId === runeTypeId));
-      if (atts.length === 0 || !hasRune) return null;
+  const rows = SIMULATOR_PAGES.flatMap((pageCfg) => {
+    const items = state.data[pageCfg.itemsKey];
+    const attempts = state.data[pageCfg.attemptsKey];
 
-      const avgCraftCost = atts.reduce((s, a) => s + a.craftCost, 0) / atts.length;
-      const currentAvgValue = atts.reduce((s, a) => s + attemptValue(a), 0) / atts.length;
-      const simAvgValue = atts.reduce((s, a) => s + simulatedAttemptValue(a, runeTypeId, overrides), 0) / atts.length;
+    return items
+      .map((item) => {
+        const atts = attempts.filter((a) => a.itemId === item.id);
+        const hasRune = atts.some((a) => a.runes.some((r) => r.typeId === runeTypeId));
+        if (atts.length === 0 || !hasRune) return null;
 
-      const currentRatio = avgCraftCost ? currentAvgValue / avgCraftCost : null;
-      const simRatio = avgCraftCost ? simAvgValue / avgCraftCost : null;
-      const simNetGain = simAvgValue - avgCraftCost;
+        const avgCraftCost = atts.reduce((s, a) => s + a.craftCost, 0) / atts.length;
+        const currentAvgValue = atts.reduce((s, a) => s + attemptValue(a), 0) / atts.length;
+        const simAvgValue = atts.reduce((s, a) => s + simulatedAttemptValue(a, runeTypeId, overrides), 0) / atts.length;
 
-      return { item, count: atts.length, currentRatio, simRatio, simNetGain };
-    })
-    .filter(Boolean);
+        const currentRatio = avgCraftCost ? currentAvgValue / avgCraftCost : null;
+        const simRatio = avgCraftCost ? simAvgValue / avgCraftCost : null;
+        const simNetGain = simAvgValue - avgCraftCost;
+
+        return { item, pageLabel: pageCfg.label, count: atts.length, currentRatio, simRatio, simNetGain };
+      })
+      .filter(Boolean);
+  });
 
   rows.sort((a, b) => {
     if (a.simRatio === null) return 1;
@@ -1615,12 +1612,12 @@ function runSimulator() {
   });
 
   if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Aucun objet de cette page n\'a produit cette rune jusqu\'ici.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Aucun objet n\'a produit cette rune jusqu\'ici.</td></tr>';
     return;
   }
 
   tbody.innerHTML = rows
-    .map(({ item, count, currentRatio, simRatio, simNetGain }) => {
+    .map(({ item, pageLabel, count, currentRatio, simRatio, simNetGain }) => {
       const cat = classifyRatio(simRatio);
       const simRatioLabel = simRatio !== null ? formatPercent(simRatio * 100, 0) : '—';
       const currentRatioLabel = currentRatio !== null ? formatPercent(currentRatio * 100, 0) : '—';
@@ -1629,6 +1626,7 @@ function runSimulator() {
       return `
         <tr>
           <td>${escapeHtml(item.name)}</td>
+          <td>${escapeHtml(pageLabel)}</td>
           <td>${count}</td>
           <td>${currentRatioLabel}</td>
           <td><span class="badge ${cat.cls}">${simRatioLabel}</span></td>
@@ -1639,7 +1637,6 @@ function runSimulator() {
     .join('');
 }
 
-document.getElementById('sim-page-select').addEventListener('change', runSimulator);
 document.getElementById('sim-price-input').addEventListener('input', runSimulator);
 document.getElementById('sim-price-x3-input').addEventListener('input', runSimulator);
 document.getElementById('sim-price-x9-input').addEventListener('input', runSimulator);
