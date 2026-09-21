@@ -1148,7 +1148,7 @@ function createFlipPage(cfg) {
   function sales() { return state.data[cfg.salesKey]; }
 
   function getSalesForItem(itemId) {
-    return sales().filter((s) => s.itemId === itemId);
+    return sales().filter((s) => s.jewelId === itemId);
   }
 
   function saleIsSold(sale) {
@@ -1208,7 +1208,7 @@ function createFlipPage(cfg) {
     if (!name) return;
     const itemId = uid();
     items().push({ id: itemId, name });
-    sales().push({ id: uid(), itemId, purchasePrice, listedDate, salePrice: null, saleDate: null });
+    sales().push({ id: uid(), jewelId: itemId, purchasePrice, listedDate, salePrice: null, saleDate: null });
     saveData();
     e.target.reset();
     document.getElementById(cfg.addItemFormId).classList.add('hidden');
@@ -1371,7 +1371,7 @@ function createFlipPage(cfg) {
         const ok = await showConfirm(`Supprimer "${item.name}" et tous ses achats associés ?`, { danger: true });
         if (!ok) return;
         state.data[cfg.itemsKey] = items().filter((i) => i.id !== id);
-        state.data[cfg.salesKey] = sales().filter((s) => s.itemId !== id);
+        state.data[cfg.salesKey] = sales().filter((s) => s.jewelId !== id);
         if (state[cfg.openDetailKey] === id) state[cfg.openDetailKey] = null;
         saveData();
         render();
@@ -1436,7 +1436,7 @@ function createFlipPage(cfg) {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const sale = readSaleForm(form);
-      sales().push({ id: uid(), itemId, ...sale });
+      sales().push({ id: uid(), jewelId: itemId, ...sale });
       saveData();
       render();
     });
@@ -1453,7 +1453,7 @@ function createFlipPage(cfg) {
     closeInlineForms();
     const sale = sales().find((s) => s.id === saleId);
     if (!sale) return;
-    const item = items().find((i) => i.id === sale.itemId);
+    const item = items().find((i) => i.id === sale.jewelId);
     if (!item) return;
 
     const form = buildSaleForm(item.name, sale);
@@ -1823,6 +1823,7 @@ document.getElementById('import-legacy-btn').addEventListener('click', async () 
   const btn = document.getElementById('import-legacy-btn');
   btn.disabled = true;
   state.data = {
+    ...state.data,
     runeTypes: mergeById(state.data.runeTypes, legacy.runeTypes),
     items: mergeById(state.data.items, legacy.items),
     attempts: mergeById(state.data.attempts, legacy.attempts),
