@@ -291,6 +291,15 @@ tbody tr:hover { background: var(--row-hover); }
 .name-link { cursor: pointer; }
 .name-link:hover { color: var(--accent); text-decoration: underline; }
 
+.fold-toggle-row {
+  cursor: pointer;
+  background: var(--panel-2) !important;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.fold-toggle-row:hover { background: var(--row-hover) !important; }
+.fold-toggle-row td { white-space: normal; }
+
 .rune-type-row {
   display: flex;
   align-items: center;

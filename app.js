@@ -112,15 +112,19 @@ const state = {
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
+  foldNonProfitable: true,
   sculptorSort: { column: 'ratio', direction: 'desc' },
   openSculptorDetailId: null,
   sculptorSearchQuery: '',
+  sculptorFoldNonProfitable: true,
   forgeronSort: { column: 'ratio', direction: 'desc' },
   openForgeronDetailId: null,
   forgeronSearchQuery: '',
+  forgeronFoldNonProfitable: true,
   jewelrySort: { column: 'avgRatio', direction: 'desc' },
   openJewelDetailId: null,
   jewelrySearchQuery: '',
+  jewelryFoldNonProfitable: true,
 };
 
 function todayISODate() {
@@ -681,6 +685,40 @@ function createCraftPage(cfg) {
     });
   }
 
+  function isNonProfitable(stats) {
+    return classifyRatio(stats.ratio).cls === 'pas-rentable';
+  }
+
+  function itemRowHtml(item, stats) {
+    const cat = classifyRatio(stats.ratio);
+    const ratioLabel = stats.ratio !== null ? formatPercent(stats.ratio * 100, 0) : '—';
+    const netGainCls = stats.netGain === null ? '' : stats.netGain >= 0 ? 'gain-positive' : 'gain-negative';
+    const netGainLabel = stats.netGain === null ? '—' : (stats.netGain >= 0 ? '+' : '') + formatKamas(stats.netGain);
+    const isOpen = state[cfg.openDetailKey] === item.id;
+    return `
+      <tr data-item-id="${item.id}" class="clickable-row">
+        <td>
+          <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
+          <span class="name-link" title="Cliquer pour renommer">${escapeHtml(item.name)}</span>
+        </td>
+        <td title="Moyenne calculée à partir des essais — pour corriger une valeur, ouvre le détail puis 'Modifier' sur l'essai concerné">${formatKamas(stats.unitCraftCost)}</td>
+        <td>${stats.count}</td>
+        <td>${formatPercent(stats.avgPercent)}</td>
+        <td>${formatKamas(stats.avgValue)}</td>
+        <td class="${netGainCls}">${netGainLabel}</td>
+        <td>
+          <span class="badge ${cat.cls}">${cat.label}</span>
+          <div class="ratio-note">${stats.ratio !== null ? ratioLabel + ' du coût de craft de la série' : ''}</div>
+        </td>
+        <td class="row-actions">
+          <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
+          <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
+        </td>
+      </tr>
+      ${buildDetailRowHtml(item)}
+    `;
+  }
+
   function renderTable() {
     const tbody = document.getElementById(cfg.tableBodyId);
     const rows = sortedRows();
@@ -692,35 +730,35 @@ function createCraftPage(cfg) {
         : 'Aucun objet pour le moment. Ajoute-en un avec "+ Nouvel objet".';
       tbody.innerHTML = `<tr><td colspan="8" class="empty-state">${message}</td></tr>`;
     } else {
-      tbody.innerHTML = rows.map(({ item, stats }) => {
-        const cat = classifyRatio(stats.ratio);
-        const ratioLabel = stats.ratio !== null ? formatPercent(stats.ratio * 100, 0) : '—';
-        const netGainCls = stats.netGain === null ? '' : stats.netGain >= 0 ? 'gain-positive' : 'gain-negative';
-        const netGainLabel = stats.netGain === null ? '—' : (stats.netGain >= 0 ? '+' : '') + formatKamas(stats.netGain);
-        const isOpen = state[cfg.openDetailKey] === item.id;
-        return `
-          <tr data-item-id="${item.id}" class="clickable-row">
-            <td>
-              <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
-              <span class="name-link" title="Cliquer pour renommer">${escapeHtml(item.name)}</span>
-            </td>
-            <td title="Moyenne calculée à partir des essais — pour corriger une valeur, ouvre le détail puis 'Modifier' sur l'essai concerné">${formatKamas(stats.unitCraftCost)}</td>
-            <td>${stats.count}</td>
-            <td>${formatPercent(stats.avgPercent)}</td>
-            <td>${formatKamas(stats.avgValue)}</td>
-            <td class="${netGainCls}">${netGainLabel}</td>
-            <td>
-              <span class="badge ${cat.cls}">${cat.label}</span>
-              <div class="ratio-note">${stats.ratio !== null ? ratioLabel + ' du coût de craft de la série' : ''}</div>
-            </td>
-            <td class="row-actions">
-              <button type="button" class="add-attempt-btn primary-btn" data-id="${item.id}">+ Nouvel essai</button>
-              <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
+      const profitableRows = rows.filter(({ stats }) => !isNonProfitable(stats));
+      const nonProfitableRows = rows.filter(({ stats }) => isNonProfitable(stats));
+      const folded = state[cfg.foldKey];
+
+      let html = profitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+
+      if (nonProfitableRows.length > 0) {
+        html += `
+          <tr class="fold-toggle-row" data-fold-toggle="1">
+            <td colspan="8">
+              <span class="expand-arrow">${folded ? '▶' : '▼'}</span>
+              📁 Objets non rentables (${nonProfitableRows.length})
             </td>
           </tr>
-          ${buildDetailRowHtml(item)}
         `;
-      }).join('');
+        if (!folded) {
+          html += nonProfitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+        }
+      }
+
+      tbody.innerHTML = html;
+    }
+
+    const foldToggleRow = tbody.querySelector('[data-fold-toggle]');
+    if (foldToggleRow) {
+      foldToggleRow.addEventListener('click', () => {
+        state[cfg.foldKey] = !state[cfg.foldKey];
+        renderTable();
+      });
     }
 
     tbody.querySelectorAll('tr[data-item-id]').forEach((row) => {
@@ -843,6 +881,7 @@ const runePaPage = createCraftPage({
   totalCostElId: 'items-total-cost',
   totalValueElId: 'items-total-value',
   totalNetElId: 'items-total-net',
+  foldKey: 'foldNonProfitable',
 });
 
 const sculpteurPage = createCraftPage({
@@ -861,6 +900,7 @@ const sculpteurPage = createCraftPage({
   totalCostElId: 'sculptor-total-cost',
   totalValueElId: 'sculptor-total-value',
   totalNetElId: 'sculptor-total-net',
+  foldKey: 'sculptorFoldNonProfitable',
 });
 
 const forgeronPage = createCraftPage({
@@ -879,6 +919,7 @@ const forgeronPage = createCraftPage({
   totalCostElId: 'forgeron-total-cost',
   totalValueElId: 'forgeron-total-value',
   totalNetElId: 'forgeron-total-net',
+  foldKey: 'forgeronFoldNonProfitable',
 });
 
 // ---------- Add attempt form ----------
@@ -1212,6 +1253,42 @@ function sortedJewels() {
   return rows;
 }
 
+function jewelRowHtml(jewel, stats) {
+  const cat = classifyJewelRatio(stats.avgRatio);
+  const ratioLabel = stats.avgRatio !== null ? formatPercent(stats.avgRatio * 100, 0) : '—';
+  const gainCls = stats.totalGain === null ? '' : stats.totalGain >= 0 ? 'gain-positive' : 'gain-negative';
+  const gainLabel = stats.totalGain === null ? '—' : (stats.totalGain >= 0 ? '+' : '') + formatKamas(stats.totalGain);
+  const delayLabel = stats.avgDelay === null ? '—' : Math.round(stats.avgDelay) + ' j';
+  // Tout est vendu (aucun bijou actuellement en vente) et le rendement est positif :
+  // bon candidat pour relancer un achat.
+  const isOpportunity = stats.count > 0 && stats.soldCount === stats.count && stats.avgRatio !== null && stats.avgRatio >= 1;
+  const opportunityIcon = isOpportunity
+    ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
+    : '';
+  const isOpen = state.openJewelDetailId === jewel.id;
+  return `
+    <tr data-jewel-id="${jewel.id}" class="clickable-row${isOpportunity ? ' jewel-row-opportunity' : ''}">
+      <td>
+        <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
+        ${opportunityIcon}<span class="name-link" title="Cliquer pour renommer">${escapeHtml(jewel.name)}</span>
+      </td>
+      <td>${formatKamas(stats.avgPurchasePrice)}</td>
+      <td>${stats.count}</td>
+      <td>${delayLabel}</td>
+      <td class="${gainCls}">${gainLabel}</td>
+      <td>
+        <span class="badge ${cat.cls}">${cat.label}</span>
+        <div class="ratio-note">${stats.avgRatio !== null ? ratioLabel + " du prix d'achat" : ''}</div>
+      </td>
+      <td class="row-actions">
+        <button type="button" class="add-jewel-sale-btn primary-btn" data-id="${jewel.id}">+ Nouvel achat</button>
+        <button type="button" class="delete-jewel-btn" data-id="${jewel.id}">Supprimer</button>
+      </td>
+    </tr>
+    ${buildJewelDetailRowHtml(jewel)}
+  `;
+}
+
 function renderJewelryTable() {
   const tbody = document.getElementById('jewelry-table-body');
   const rows = sortedJewels();
@@ -1222,41 +1299,35 @@ function renderJewelryTable() {
       : 'Aucun bijou pour le moment. Ajoute-en un avec "+ Nouveau bijou".';
     tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${message}</td></tr>`;
   } else {
-    tbody.innerHTML = rows.map(({ jewel, stats }) => {
-      const cat = classifyJewelRatio(stats.avgRatio);
-      const ratioLabel = stats.avgRatio !== null ? formatPercent(stats.avgRatio * 100, 0) : '—';
-      const gainCls = stats.totalGain === null ? '' : stats.totalGain >= 0 ? 'gain-positive' : 'gain-negative';
-      const gainLabel = stats.totalGain === null ? '—' : (stats.totalGain >= 0 ? '+' : '') + formatKamas(stats.totalGain);
-      const delayLabel = stats.avgDelay === null ? '—' : Math.round(stats.avgDelay) + ' j';
-      // Tout est vendu (aucun bijou actuellement en vente) et le rendement est positif :
-      // bon candidat pour relancer un achat.
-      const isOpportunity = stats.count > 0 && stats.soldCount === stats.count && stats.avgRatio !== null && stats.avgRatio >= 1;
-      const opportunityIcon = isOpportunity
-        ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
-        : '';
-      const isOpen = state.openJewelDetailId === jewel.id;
-      return `
-        <tr data-jewel-id="${jewel.id}" class="clickable-row${isOpportunity ? ' jewel-row-opportunity' : ''}">
-          <td>
-            <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
-            ${opportunityIcon}<span class="name-link" title="Cliquer pour renommer">${escapeHtml(jewel.name)}</span>
-          </td>
-          <td>${formatKamas(stats.avgPurchasePrice)}</td>
-          <td>${stats.count}</td>
-          <td>${delayLabel}</td>
-          <td class="${gainCls}">${gainLabel}</td>
-          <td>
-            <span class="badge ${cat.cls}">${cat.label}</span>
-            <div class="ratio-note">${stats.avgRatio !== null ? ratioLabel + " du prix d'achat" : ''}</div>
-          </td>
-          <td class="row-actions">
-            <button type="button" class="add-jewel-sale-btn primary-btn" data-id="${jewel.id}">+ Nouvel achat</button>
-            <button type="button" class="delete-jewel-btn" data-id="${jewel.id}">Supprimer</button>
+    const profitableRows = rows.filter(({ stats }) => classifyJewelRatio(stats.avgRatio).cls !== 'pas-rentable');
+    const nonProfitableRows = rows.filter(({ stats }) => classifyJewelRatio(stats.avgRatio).cls === 'pas-rentable');
+    const folded = state.jewelryFoldNonProfitable;
+
+    let html = profitableRows.map(({ jewel, stats }) => jewelRowHtml(jewel, stats)).join('');
+
+    if (nonProfitableRows.length > 0) {
+      html += `
+        <tr class="fold-toggle-row" data-fold-toggle="1">
+          <td colspan="7">
+            <span class="expand-arrow">${folded ? '▶' : '▼'}</span>
+            📁 Bijoux non rentables (${nonProfitableRows.length})
           </td>
         </tr>
-        ${buildJewelDetailRowHtml(jewel)}
       `;
-    }).join('');
+      if (!folded) {
+        html += nonProfitableRows.map(({ jewel, stats }) => jewelRowHtml(jewel, stats)).join('');
+      }
+    }
+
+    tbody.innerHTML = html;
+  }
+
+  const foldToggleRow = tbody.querySelector('[data-fold-toggle]');
+  if (foldToggleRow) {
+    foldToggleRow.addEventListener('click', () => {
+      state.jewelryFoldNonProfitable = !state.jewelryFoldNonProfitable;
+      renderJewelryTable();
+    });
   }
 
   tbody.querySelectorAll('tr[data-jewel-id]').forEach((row) => {
