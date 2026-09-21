@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20260921b">
+<link rel="stylesheet" href="style.css?v=20260921c">
 </head>
 <body class="loading">
 <header>
@@ -19,6 +19,7 @@
     <button type="button" class="tab-btn" data-tab="sculpteur" role="tab" aria-selected="false">Sculpteur</button>
     <button type="button" class="tab-btn" data-tab="forgeron" role="tab" aria-selected="false">Forgeron</button>
     <button type="button" class="tab-btn" data-tab="jewelry" role="tab" aria-selected="false">Bijoutier/Joaillo</button>
+    <button type="button" class="tab-btn" data-tab="sculpto" role="tab" aria-selected="false">Sculpteur/Sculto</button>
     <button type="button" class="tab-btn" data-tab="runes" role="tab" aria-selected="false">Types de runes</button>
     <button type="button" class="tab-btn" data-tab="simulator" role="tab" aria-selected="false">Simulateur</button>
   </div>
@@ -308,6 +309,70 @@
     <p class="hint">Tant qu'un bijou n'est pas vendu, son prix d'achat compte en négatif (capital immobilisé) ; une fois vendu, c'est le gain réel (vente − achat) qui compte.</p>
   </section>
 
+  <section class="card hidden" id="sculpto-section" data-tab-panel="sculpto">
+    <div class="section-header">
+      <h2>Sculpteur/Sculto</h2>
+      <div class="section-header-actions">
+        <button id="sculpto-refresh-btn" class="secondary-btn" title="Recharger les données depuis le serveur (pour voir les changements faits sur un autre PC)">🔄 Actualiser</button>
+        <button id="show-add-sculpto-btn" class="primary-btn">+ Nouvel objet</button>
+      </div>
+    </div>
+
+    <form id="add-sculpto-form" class="panel hidden">
+      <h3>Nouvel objet</h3>
+      <label>Nom de l'objet
+        <input type="text" id="sculpto-name" required>
+      </label>
+      <label>Prix d'achat (kamas)
+        <input type="number" id="sculpto-purchase-price" min="0" step="1" required>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="primary-btn">Ajouter</button>
+        <button type="button" class="cancel-btn" data-cancel="add-sculpto-form">Annuler</button>
+      </div>
+    </form>
+
+    <input type="search" id="sculpto-search" class="search-input" placeholder="Rechercher un objet...">
+
+    <div class="table-wrapper">
+      <table id="sculpto-table">
+        <thead>
+          <tr>
+            <th data-sort="name">Objet</th>
+            <th data-sort="avgPurchasePrice">Prix d'achat (moy.)</th>
+            <th data-sort="count">Nb itérations</th>
+            <th data-sort="avgDelay">Délai moyen</th>
+            <th data-sort="totalGain">Gain</th>
+            <th data-sort="avgRatio">Rentabilité</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="sculpto-table-body"></tbody>
+      </table>
+    </div>
+    <p class="hint legend">
+      <span class="badge rentable">Rentable</span>
+      <span class="badge pas-rentable">Pas rentable</span>
+      <span class="badge no-data">Pas assez de données (rien de vendu)</span>
+    </p>
+
+    <div class="totals-bar">
+      <div class="totals-stat">
+        <span class="totals-label">Total investi</span>
+        <span class="totals-value" id="sculpto-total-invested">—</span>
+      </div>
+      <div class="totals-stat">
+        <span class="totals-label">Total encaissé</span>
+        <span class="totals-value" id="sculpto-total-collected">—</span>
+      </div>
+      <div class="totals-stat totals-stat-main">
+        <span class="totals-label">Rentabilité totale</span>
+        <span class="totals-value" id="sculpto-total-net">—</span>
+      </div>
+    </div>
+    <p class="hint">Tant qu'un objet n'est pas vendu, son prix d'achat compte en négatif (capital immobilisé) ; une fois vendu, c'est le gain réel (vente − achat) qui compte.</p>
+  </section>
+
   <section class="card hidden" id="simulator-section" data-tab-panel="simulator">
     <h2>Simulateur de prix de rune</h2>
     <p class="hint">Choisis une rune puis ajuste ses prix simple / Pa (x3) / Ra (x9) : tous les objets (Rune Pa, Sculpteur, Forgeron) qui en donnent s'affichent triés par rentabilité simulée, pour savoir lesquels prioriser suite à une variation de prix. Les runes des autres types gardent leur valeur actuelle. Les champs sont préremplis avec les prix actuels de la rune, modifie uniquement ceux qui changent.</p>
@@ -430,6 +495,35 @@
   </form>
 </template>
 
+<template id="sculpto-entry-template">
+  <form class="panel jewel-entry-form">
+    <h3><span class="jewel-entry-form-title">Nouvel achat</span> — <span class="jewel-name-label"></span></h3>
+    <label>Prix d'achat (kamas)
+      <input type="number" class="jewel-purchase-price" min="0" step="1" required>
+    </label>
+    <label>Prix de vente (kamas) — laisse vide tant que non vendu
+      <input type="number" class="jewel-sale-price" min="0" step="1">
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="primary-btn">Enregistrer</button>
+      <button type="button" class="cancel-btn">Annuler</button>
+    </div>
+  </form>
+</template>
+
+<template id="edit-sculpto-template">
+  <form class="panel edit-jewel-form">
+    <h3>Renommer — <span class="jewel-name-label"></span></h3>
+    <label>Nom de l'objet
+      <input type="text" class="edit-jewel-name" required>
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="primary-btn">Enregistrer</button>
+      <button type="button" class="cancel-btn">Annuler</button>
+    </div>
+  </form>
+</template>
+
 <div id="modal-overlay" class="modal-overlay hidden">
   <div class="modal-box">
     <p id="modal-message"></p>
@@ -442,6 +536,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260921b"></script>
+<script src="app.js?v=20260921c"></script>
 </body>
 </html>

@@ -259,8 +259,8 @@ th.sorted::after {
 tbody tr:nth-child(even) { background: var(--row-stripe); }
 tbody tr:hover { background: var(--row-hover); }
 
-#jewelry-table-body tr.jewel-row-opportunity { background: #e6f6e0; }
-#jewelry-table-body tr.jewel-row-opportunity:hover { background: #d7efce; }
+tr.jewel-row-opportunity { background: #e6f6e0; }
+tr.jewel-row-opportunity:hover { background: #d7efce; }
 
 .badge {
   display: inline-block;

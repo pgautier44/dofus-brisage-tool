@@ -33,7 +33,7 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [] };
+    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [] };
   }
 
   const d = data.data || {};
@@ -48,6 +48,8 @@ async function loadData() {
     forgeronAttempts: d.forgeronAttempts || [],
     jewels: d.jewels || [],
     jewelSales: d.jewelSales || [],
+    sculptoItems: d.sculptoItems || [],
+    sculptoSales: d.sculptoSales || [],
   };
 }
 
@@ -108,7 +110,7 @@ function showAlert(message) {
 const RUNE_CATEGORY_PALETTE = ['#c9720f', '#2f9e44', '#1971c2', '#9c36b5', '#e8590c', '#0c8599', '#e03131', '#5c940d'];
 
 const state = {
-  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [] },
+  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [] },
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
@@ -125,6 +127,10 @@ const state = {
   openJewelDetailId: null,
   jewelrySearchQuery: '',
   jewelryFoldNonProfitable: true,
+  sculptoSort: { column: 'avgRatio', direction: 'desc' },
+  openSculptoDetailId: null,
+  sculptoSearchQuery: '',
+  sculptoFoldNonProfitable: true,
 };
 
 function todayISODate() {
@@ -1129,451 +1135,497 @@ function closeInlineForms() {
 
 // ---------- Edit item form ----------
 
-// ---------- Jewelry (Bijoutier/Joaillo) ----------
+// ---------- Flip pages (buy → list → sell tracking: Bijoutier/Joaillo, Sculpteur/Sculto) ----------
 
-function getJewelSales(jewelId) {
-  return state.data.jewelSales.filter((s) => s.jewelId === jewelId);
-}
-
-function jewelSaleIsSold(sale) {
-  return sale.salePrice !== null && sale.salePrice !== undefined && !!sale.saleDate;
-}
-
-function jewelSaleDelay(sale) {
-  if (!jewelSaleIsSold(sale)) return null;
-  const ms = new Date(sale.saleDate) - new Date(sale.listedDate);
-  return Math.round(ms / 86400000);
-}
-
-function jewelSaleGain(sale) {
-  if (!jewelSaleIsSold(sale)) return null;
-  return sale.salePrice - sale.purchasePrice;
-}
-
-function computeJewelStats(jewel) {
-  const sales = getJewelSales(jewel.id);
-  const count = sales.length;
-  const soldSales = sales.filter(jewelSaleIsSold);
-  const soldCount = soldSales.length;
-
-  let avgPurchasePrice = null;
-  let avgDelay = null;
-  let totalGain = null;
-  let avgRatio = null;
-
-  if (count > 0) {
-    avgPurchasePrice = sales.reduce((s, e) => s + e.purchasePrice, 0) / count;
-  }
-  if (soldCount > 0) {
-    const totalPurchase = soldSales.reduce((s, e) => s + e.purchasePrice, 0);
-    const totalSale = soldSales.reduce((s, e) => s + e.salePrice, 0);
-    totalGain = totalSale - totalPurchase;
-    avgDelay = soldSales.reduce((s, e) => s + jewelSaleDelay(e), 0) / soldCount;
-    avgRatio = totalPurchase > 0 ? totalSale / totalPurchase : null;
-  }
-
-  return { count, soldCount, avgPurchasePrice, avgDelay, totalGain, avgRatio };
-}
-
-function classifyJewelRatio(ratio) {
+function classifyFlipRatio(ratio) {
   if (ratio === null || ratio === undefined) return { label: 'Pas assez de données', cls: 'no-data' };
   if (ratio >= 1) return { label: 'Rentable', cls: 'rentable' };
   return { label: 'Pas rentable', cls: 'pas-rentable' };
 }
 
-document.getElementById('show-add-jewel-btn').addEventListener('click', () => {
-  document.getElementById('add-jewel-form').classList.toggle('hidden');
-});
+function createFlipPage(cfg) {
+  function items() { return state.data[cfg.itemsKey]; }
+  function sales() { return state.data[cfg.salesKey]; }
 
-document.getElementById('jewel-search').addEventListener('input', (e) => {
-  state.jewelrySearchQuery = e.target.value.trim().toLowerCase();
-  renderJewelryTable();
-});
-
-document.getElementById('add-jewel-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = document.getElementById('jewel-name').value.trim();
-  const purchasePrice = Number(document.getElementById('jewel-purchase-price').value) || 0;
-  const listedDate = todayISODate();
-  if (!name) return;
-  const jewelId = uid();
-  state.data.jewels.push({ id: jewelId, name });
-  state.data.jewelSales.push({
-    id: uid(), jewelId, purchasePrice, listedDate, salePrice: null, saleDate: null,
-  });
-  saveData();
-  e.target.reset();
-  document.getElementById('add-jewel-form').classList.add('hidden');
-  render();
-});
-
-function sortedJewels() {
-  const { column, direction } = state.jewelrySort;
-  const jewels = state.jewelrySearchQuery
-    ? state.data.jewels.filter((j) => j.name.toLowerCase().includes(state.jewelrySearchQuery))
-    : state.data.jewels;
-  const rows = jewels.map((jewel) => ({ jewel, stats: computeJewelStats(jewel) }));
-
-  rows.sort((a, b) => {
-    let va, vb;
-    switch (column) {
-      case 'name':
-        va = a.jewel.name.toLowerCase();
-        vb = b.jewel.name.toLowerCase();
-        break;
-      case 'avgPurchasePrice':
-        va = a.stats.avgPurchasePrice;
-        vb = b.stats.avgPurchasePrice;
-        break;
-      case 'count':
-        va = a.stats.count;
-        vb = b.stats.count;
-        break;
-      case 'avgDelay':
-        va = a.stats.avgDelay;
-        vb = b.stats.avgDelay;
-        break;
-      case 'totalGain':
-        va = a.stats.totalGain;
-        vb = b.stats.totalGain;
-        break;
-      case 'avgRatio':
-      default:
-        va = a.stats.avgRatio;
-        vb = b.stats.avgRatio;
-        break;
-    }
-    if (va === null || va === undefined) return 1;
-    if (vb === null || vb === undefined) return -1;
-    if (va < vb) return direction === 'asc' ? -1 : 1;
-    if (va > vb) return direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  return rows;
-}
-
-function jewelRowHtml(jewel, stats) {
-  const cat = classifyJewelRatio(stats.avgRatio);
-  const ratioLabel = stats.avgRatio !== null ? formatPercent(stats.avgRatio * 100, 0) : '—';
-  const gainCls = stats.totalGain === null ? '' : stats.totalGain >= 0 ? 'gain-positive' : 'gain-negative';
-  const gainLabel = stats.totalGain === null ? '—' : (stats.totalGain >= 0 ? '+' : '') + formatKamas(stats.totalGain);
-  const delayLabel = stats.avgDelay === null ? '—' : Math.round(stats.avgDelay) + ' j';
-  // Tout est vendu (aucun bijou actuellement en vente) et le rendement est positif :
-  // bon candidat pour relancer un achat.
-  const isOpportunity = stats.count > 0 && stats.soldCount === stats.count && stats.avgRatio !== null && stats.avgRatio >= 1;
-  const opportunityIcon = isOpportunity
-    ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
-    : '';
-  const isOpen = state.openJewelDetailId === jewel.id;
-  return `
-    <tr data-jewel-id="${jewel.id}" class="clickable-row${isOpportunity ? ' jewel-row-opportunity' : ''}">
-      <td>
-        <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
-        ${opportunityIcon}<span class="name-link" title="Cliquer pour renommer">${escapeHtml(jewel.name)}</span>
-      </td>
-      <td>${formatKamas(stats.avgPurchasePrice)}</td>
-      <td>${stats.count}</td>
-      <td>${delayLabel}</td>
-      <td class="${gainCls}">${gainLabel}</td>
-      <td>
-        <span class="badge ${cat.cls}">${cat.label}</span>
-        <div class="ratio-note">${stats.avgRatio !== null ? ratioLabel + " du prix d'achat" : ''}</div>
-      </td>
-      <td class="row-actions">
-        <button type="button" class="add-jewel-sale-btn primary-btn" data-id="${jewel.id}">+ Nouvel achat</button>
-        <button type="button" class="delete-jewel-btn" data-id="${jewel.id}">Supprimer</button>
-      </td>
-    </tr>
-    ${buildJewelDetailRowHtml(jewel)}
-  `;
-}
-
-function renderJewelryTable() {
-  const tbody = document.getElementById('jewelry-table-body');
-  const rows = sortedJewels();
-
-  if (rows.length === 0) {
-    const message = state.jewelrySearchQuery
-      ? `Aucun bijou ne correspond à "${escapeHtml(state.jewelrySearchQuery)}".`
-      : 'Aucun bijou pour le moment. Ajoute-en un avec "+ Nouveau bijou".';
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${message}</td></tr>`;
-  } else {
-    const profitableRows = rows.filter(({ stats }) => classifyJewelRatio(stats.avgRatio).cls !== 'pas-rentable');
-    const nonProfitableRows = rows.filter(({ stats }) => classifyJewelRatio(stats.avgRatio).cls === 'pas-rentable');
-    const folded = state.jewelryFoldNonProfitable;
-
-    let html = profitableRows.map(({ jewel, stats }) => jewelRowHtml(jewel, stats)).join('');
-
-    if (nonProfitableRows.length > 0) {
-      html += `
-        <tr class="fold-toggle-row" data-fold-toggle="1">
-          <td colspan="7">
-            <span class="expand-arrow">${folded ? '▶' : '▼'}</span>
-            📁 Bijoux non rentables (${nonProfitableRows.length})
-          </td>
-        </tr>
-      `;
-      if (!folded) {
-        html += nonProfitableRows.map(({ jewel, stats }) => jewelRowHtml(jewel, stats)).join('');
-      }
-    }
-
-    tbody.innerHTML = html;
+  function getSalesForItem(itemId) {
+    return sales().filter((s) => s.itemId === itemId);
   }
 
-  const foldToggleRow = tbody.querySelector('[data-fold-toggle]');
-  if (foldToggleRow) {
-    foldToggleRow.addEventListener('click', () => {
-      state.jewelryFoldNonProfitable = !state.jewelryFoldNonProfitable;
-      renderJewelryTable();
-    });
+  function saleIsSold(sale) {
+    return sale.salePrice !== null && sale.salePrice !== undefined && !!sale.saleDate;
   }
 
-  tbody.querySelectorAll('tr[data-jewel-id]').forEach((row) => {
-    row.addEventListener('click', (e) => {
-      const id = row.dataset.jewelId;
-      if (e.target.closest('.row-actions')) return;
-      if (e.target.closest('.name-link')) {
-        openEditJewelForm(id);
-        return;
-      }
-      state.openJewelDetailId = state.openJewelDetailId === id ? null : id;
-      renderJewelryTable();
-    });
-  });
-  tbody.querySelectorAll('.add-jewel-sale-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openAddJewelSaleForm(e.target.dataset.id));
-  });
-  tbody.querySelectorAll('.edit-jewel-sale-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => openEditJewelSaleForm(e.target.dataset.id));
-  });
-  tbody.querySelectorAll('.delete-jewel-sale-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const id = e.target.dataset.id;
-      state.data.jewelSales = state.data.jewelSales.filter((s) => s.id !== id);
-      saveData();
-      render();
-    });
-  });
-  tbody.querySelectorAll('.delete-jewel-btn').forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
-      const id = e.target.dataset.id;
-      const jewel = state.data.jewels.find((j) => j.id === id);
-      const ok = await showConfirm(`Supprimer "${jewel.name}" et tous ses achats associés ?`, { danger: true });
-      if (!ok) return;
-      state.data.jewels = state.data.jewels.filter((j) => j.id !== id);
-      state.data.jewelSales = state.data.jewelSales.filter((s) => s.jewelId !== id);
-      if (state.openJewelDetailId === id) state.openJewelDetailId = null;
-      saveData();
-      render();
-    });
-  });
-
-  updateJewelrySortHeaders();
-}
-
-function updateJewelrySortHeaders() {
-  document.querySelectorAll('#jewelry-table th[data-sort]').forEach((th) => {
-    th.classList.remove('sorted');
-    th.removeAttribute('data-arrow');
-    if (th.dataset.sort === state.jewelrySort.column) {
-      th.classList.add('sorted');
-      th.setAttribute('data-arrow', state.jewelrySort.direction === 'asc' ? '▲' : '▼');
-    }
-  });
-}
-
-document.querySelectorAll('#jewelry-table th[data-sort]').forEach((th) => {
-  th.addEventListener('click', () => {
-    const col = th.dataset.sort;
-    if (state.jewelrySort.column === col) {
-      state.jewelrySort.direction = state.jewelrySort.direction === 'asc' ? 'desc' : 'asc';
-    } else {
-      state.jewelrySort.column = col;
-      state.jewelrySort.direction = col === 'name' ? 'asc' : 'desc';
-    }
-    renderJewelryTable();
-  });
-});
-
-function buildJewelSaleForm(jewelName, prefillSale) {
-  const template = document.getElementById('jewel-entry-template');
-  const form = template.content.firstElementChild.cloneNode(true);
-  form.querySelector('.jewel-name-label').textContent = jewelName;
-  form.querySelector('.jewel-entry-form-title').textContent = prefillSale ? "Modifier l'achat" : 'Nouvel achat';
-
-  if (prefillSale) {
-    form.querySelector('.jewel-purchase-price').value = prefillSale.purchasePrice;
-    if (prefillSale.salePrice !== null && prefillSale.salePrice !== undefined) {
-      form.querySelector('.jewel-sale-price').value = prefillSale.salePrice;
-    }
+  function saleDelay(sale) {
+    if (!saleIsSold(sale)) return null;
+    const ms = new Date(sale.saleDate) - new Date(sale.listedDate);
+    return Math.round(ms / 86400000);
   }
 
-  return form;
-}
+  function saleGain(sale) {
+    if (!saleIsSold(sale)) return null;
+    return sale.salePrice - sale.purchasePrice;
+  }
 
-// Ni la date de mise en vente ni la date de vente ne se saisissent : la première
-// passe à aujourd'hui à la création puis reste figée, la seconde passe à aujourd'hui
-// dès qu'un prix de vente est renseigné pour la première fois et reste figée ensuite
-// (on ne les remet pas à jour si on corrige juste un prix sur une ligne existante).
-function readJewelSaleForm(form, existingSale) {
-  const purchasePrice = Number(form.querySelector('.jewel-purchase-price').value) || 0;
-  const listedDate = (existingSale && existingSale.listedDate) || todayISODate();
-  const salePriceRaw = form.querySelector('.jewel-sale-price').value;
-  const salePrice = salePriceRaw === '' ? null : Number(salePriceRaw);
-  const saleDate = salePrice === null ? null : (existingSale && existingSale.saleDate) || todayISODate();
-  return { purchasePrice, listedDate, salePrice, saleDate };
-}
+  function computeItemStats(item) {
+    const itemSales = getSalesForItem(item.id);
+    const count = itemSales.length;
+    const soldSales = itemSales.filter(saleIsSold);
+    const soldCount = soldSales.length;
 
-function openAddJewelSaleForm(jewelId) {
-  closeInlineForms();
-  const jewel = state.data.jewels.find((j) => j.id === jewelId);
-  if (!jewel) return;
+    let avgPurchasePrice = null;
+    let avgDelay = null;
+    let totalGain = null;
+    let avgRatio = null;
 
-  const form = buildJewelSaleForm(jewel.name);
-  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+    if (count > 0) {
+      avgPurchasePrice = itemSales.reduce((s, e) => s + e.purchasePrice, 0) / count;
+    }
+    if (soldCount > 0) {
+      const totalPurchase = soldSales.reduce((s, e) => s + e.purchasePrice, 0);
+      const totalSale = soldSales.reduce((s, e) => s + e.salePrice, 0);
+      totalGain = totalSale - totalPurchase;
+      avgDelay = soldSales.reduce((s, e) => s + saleDelay(e), 0) / soldCount;
+      avgRatio = totalPurchase > 0 ? totalSale / totalPurchase : null;
+    }
 
-  form.addEventListener('submit', (e) => {
+    return { count, soldCount, avgPurchasePrice, avgDelay, totalGain, avgRatio };
+  }
+
+  document.getElementById(cfg.showAddItemBtnId).addEventListener('click', () => {
+    document.getElementById(cfg.addItemFormId).classList.toggle('hidden');
+  });
+
+  document.getElementById(cfg.searchInputId).addEventListener('input', (e) => {
+    state[cfg.searchKey] = e.target.value.trim().toLowerCase();
+    renderTable();
+  });
+
+  document.getElementById(cfg.addItemFormId).addEventListener('submit', (e) => {
     e.preventDefault();
-    const sale = readJewelSaleForm(form);
-    state.data.jewelSales.push({ id: uid(), jewelId, ...sale });
-    saveData();
-    render();
-  });
-
-  insertInlineForm(form, {
-    afterRowSelector: `#jewelry-table-body tr[data-jewel-id="${jewelId}"]`,
-    holderClass: 'add-jewel-sale-holder',
-    colspan: 7,
-    focusSelector: '.jewel-purchase-price',
-  });
-}
-
-function openEditJewelSaleForm(saleId) {
-  closeInlineForms();
-  const sale = state.data.jewelSales.find((s) => s.id === saleId);
-  if (!sale) return;
-  const jewel = state.data.jewels.find((j) => j.id === sale.jewelId);
-  if (!jewel) return;
-
-  const form = buildJewelSaleForm(jewel.name, sale);
-  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    Object.assign(sale, readJewelSaleForm(form, sale));
-    saveData();
-    render();
-  });
-
-  insertInlineForm(form, {
-    afterRowSelector: `.jewel-sales-table tr[data-sale-id="${saleId}"]`,
-    holderClass: 'edit-jewel-sale-holder',
-    colspan: 8,
-    focusSelector: '.jewel-purchase-price',
-  });
-}
-
-function openEditJewelForm(jewelId) {
-  closeInlineForms();
-  const jewel = state.data.jewels.find((j) => j.id === jewelId);
-  if (!jewel) return;
-
-  const template = document.getElementById('edit-jewel-template');
-  const form = template.content.firstElementChild.cloneNode(true);
-  form.querySelector('.jewel-name-label').textContent = jewel.name;
-  form.querySelector('.edit-jewel-name').value = jewel.name;
-
-  form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = form.querySelector('.edit-jewel-name').value.trim();
+    const name = document.getElementById(cfg.itemNameInputId).value.trim();
+    const purchasePrice = Number(document.getElementById(cfg.itemPriceInputId).value) || 0;
+    const listedDate = todayISODate();
     if (!name) return;
-    jewel.name = name;
+    const itemId = uid();
+    items().push({ id: itemId, name });
+    sales().push({ id: uid(), itemId, purchasePrice, listedDate, salePrice: null, saleDate: null });
     saveData();
+    e.target.reset();
+    document.getElementById(cfg.addItemFormId).classList.add('hidden');
     render();
   });
 
-  insertInlineForm(form, {
-    afterRowSelector: `#jewelry-table-body tr[data-jewel-id="${jewelId}"]`,
-    holderClass: 'edit-jewel-holder',
-    colspan: 7,
-    focusSelector: '.edit-jewel-name',
+  function sortedItemsForPage() {
+    const { column, direction } = state[cfg.sortKey];
+    const q = state[cfg.searchKey];
+    const list = q ? items().filter((it) => it.name.toLowerCase().includes(q)) : items();
+    const rows = list.map((item) => ({ item, stats: computeItemStats(item) }));
+
+    rows.sort((a, b) => {
+      let va, vb;
+      switch (column) {
+        case 'name':
+          va = a.item.name.toLowerCase();
+          vb = b.item.name.toLowerCase();
+          break;
+        case 'avgPurchasePrice':
+          va = a.stats.avgPurchasePrice;
+          vb = b.stats.avgPurchasePrice;
+          break;
+        case 'count':
+          va = a.stats.count;
+          vb = b.stats.count;
+          break;
+        case 'avgDelay':
+          va = a.stats.avgDelay;
+          vb = b.stats.avgDelay;
+          break;
+        case 'totalGain':
+          va = a.stats.totalGain;
+          vb = b.stats.totalGain;
+          break;
+        case 'avgRatio':
+        default:
+          va = a.stats.avgRatio;
+          vb = b.stats.avgRatio;
+          break;
+      }
+      if (va === null || va === undefined) return 1;
+      if (vb === null || vb === undefined) return -1;
+      if (va < vb) return direction === 'asc' ? -1 : 1;
+      if (va > vb) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return rows;
+  }
+
+  function itemRowHtml(item, stats) {
+    const cat = classifyFlipRatio(stats.avgRatio);
+    const ratioLabel = stats.avgRatio !== null ? formatPercent(stats.avgRatio * 100, 0) : '—';
+    const gainCls = stats.totalGain === null ? '' : stats.totalGain >= 0 ? 'gain-positive' : 'gain-negative';
+    const gainLabel = stats.totalGain === null ? '—' : (stats.totalGain >= 0 ? '+' : '') + formatKamas(stats.totalGain);
+    const delayLabel = stats.avgDelay === null ? '—' : Math.round(stats.avgDelay) + ' j';
+    // Tout est vendu (rien actuellement en vente) et le rendement est positif :
+    // bon candidat pour relancer un achat.
+    const isOpportunity = stats.count > 0 && stats.soldCount === stats.count && stats.avgRatio !== null && stats.avgRatio >= 1;
+    const opportunityIcon = isOpportunity
+      ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
+      : '';
+    const isOpen = state[cfg.openDetailKey] === item.id;
+    return `
+      <tr data-item-id="${item.id}" class="clickable-row${isOpportunity ? ' jewel-row-opportunity' : ''}">
+        <td>
+          <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
+          ${opportunityIcon}<span class="name-link" title="Cliquer pour renommer">${escapeHtml(item.name)}</span>
+        </td>
+        <td>${formatKamas(stats.avgPurchasePrice)}</td>
+        <td>${stats.count}</td>
+        <td>${delayLabel}</td>
+        <td class="${gainCls}">${gainLabel}</td>
+        <td>
+          <span class="badge ${cat.cls}">${cat.label}</span>
+          <div class="ratio-note">${stats.avgRatio !== null ? ratioLabel + " du prix d'achat" : ''}</div>
+        </td>
+        <td class="row-actions">
+          <button type="button" class="add-sale-btn primary-btn" data-id="${item.id}">+ Nouvel achat</button>
+          <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
+        </td>
+      </tr>
+      ${buildDetailRowHtml(item)}
+    `;
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById(cfg.tableBodyId);
+    const rows = sortedItemsForPage();
+
+    if (rows.length === 0) {
+      const q = state[cfg.searchKey];
+      const message = q
+        ? `Aucun ${cfg.itemNoun} ne correspond à "${escapeHtml(q)}".`
+        : `Aucun ${cfg.itemNoun} pour le moment. Ajoute-en un avec "${cfg.addButtonLabel}".`;
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${message}</td></tr>`;
+    } else {
+      const profitableRows = rows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls !== 'pas-rentable');
+      const nonProfitableRows = rows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls === 'pas-rentable');
+      const folded = state[cfg.foldKey];
+
+      let html = profitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+
+      if (nonProfitableRows.length > 0) {
+        html += `
+          <tr class="fold-toggle-row" data-fold-toggle="1">
+            <td colspan="7">
+              <span class="expand-arrow">${folded ? '▶' : '▼'}</span>
+              📁 ${cfg.itemNounPluralCap} non rentables (${nonProfitableRows.length})
+            </td>
+          </tr>
+        `;
+        if (!folded) {
+          html += nonProfitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+        }
+      }
+
+      tbody.innerHTML = html;
+    }
+
+    const foldToggleRow = tbody.querySelector('[data-fold-toggle]');
+    if (foldToggleRow) {
+      foldToggleRow.addEventListener('click', () => {
+        state[cfg.foldKey] = !state[cfg.foldKey];
+        renderTable();
+      });
+    }
+
+    tbody.querySelectorAll('tr[data-item-id]').forEach((row) => {
+      row.addEventListener('click', (e) => {
+        const id = row.dataset.itemId;
+        if (e.target.closest('.row-actions')) return;
+        if (e.target.closest('.name-link')) {
+          openEditItemForm(id);
+          return;
+        }
+        state[cfg.openDetailKey] = state[cfg.openDetailKey] === id ? null : id;
+        renderTable();
+      });
+    });
+    tbody.querySelectorAll('.add-sale-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => openAddSaleForm(e.target.dataset.id));
+    });
+    tbody.querySelectorAll('.edit-jewel-sale-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => openEditSaleForm(e.target.dataset.id));
+    });
+    tbody.querySelectorAll('.delete-jewel-sale-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.dataset.id;
+        state.data[cfg.salesKey] = sales().filter((s) => s.id !== id);
+        saveData();
+        render();
+      });
+    });
+    tbody.querySelectorAll('.delete-item-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.dataset.id;
+        const item = items().find((i) => i.id === id);
+        const ok = await showConfirm(`Supprimer "${item.name}" et tous ses achats associés ?`, { danger: true });
+        if (!ok) return;
+        state.data[cfg.itemsKey] = items().filter((i) => i.id !== id);
+        state.data[cfg.salesKey] = sales().filter((s) => s.itemId !== id);
+        if (state[cfg.openDetailKey] === id) state[cfg.openDetailKey] = null;
+        saveData();
+        render();
+      });
+    });
+
+    updateSortHeadersGeneric(cfg.tableId, state[cfg.sortKey]);
+    renderTotals();
+  }
+
+  document.querySelectorAll(`#${cfg.tableId} th[data-sort]`).forEach((th) => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      const sort = state[cfg.sortKey];
+      if (sort.column === col) {
+        sort.direction = sort.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        sort.column = col;
+        sort.direction = col === 'name' ? 'asc' : 'desc';
+      }
+      renderTable();
+    });
   });
+
+  function buildSaleForm(itemName, prefillSale) {
+    const template = document.getElementById(cfg.entryTemplateId);
+    const form = template.content.firstElementChild.cloneNode(true);
+    form.querySelector('.jewel-name-label').textContent = itemName;
+    form.querySelector('.jewel-entry-form-title').textContent = prefillSale ? "Modifier l'achat" : 'Nouvel achat';
+
+    if (prefillSale) {
+      form.querySelector('.jewel-purchase-price').value = prefillSale.purchasePrice;
+      if (prefillSale.salePrice !== null && prefillSale.salePrice !== undefined) {
+        form.querySelector('.jewel-sale-price').value = prefillSale.salePrice;
+      }
+    }
+
+    return form;
+  }
+
+  // Ni la date de mise en vente ni la date de vente ne se saisissent : la première
+  // passe à aujourd'hui à la création puis reste figée, la seconde passe à aujourd'hui
+  // dès qu'un prix de vente est renseigné pour la première fois et reste figée ensuite
+  // (on ne les remet pas à jour si on corrige juste un prix sur une ligne existante).
+  function readSaleForm(form, existingSale) {
+    const purchasePrice = Number(form.querySelector('.jewel-purchase-price').value) || 0;
+    const listedDate = (existingSale && existingSale.listedDate) || todayISODate();
+    const salePriceRaw = form.querySelector('.jewel-sale-price').value;
+    const salePrice = salePriceRaw === '' ? null : Number(salePriceRaw);
+    const saleDate = salePrice === null ? null : (existingSale && existingSale.saleDate) || todayISODate();
+    return { purchasePrice, listedDate, salePrice, saleDate };
+  }
+
+  function openAddSaleForm(itemId) {
+    closeInlineForms();
+    const item = items().find((i) => i.id === itemId);
+    if (!item) return;
+
+    const form = buildSaleForm(item.name);
+    form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const sale = readSaleForm(form);
+      sales().push({ id: uid(), itemId, ...sale });
+      saveData();
+      render();
+    });
+
+    insertInlineForm(form, {
+      afterRowSelector: `#${cfg.tableBodyId} tr[data-item-id="${itemId}"]`,
+      holderClass: 'add-jewel-sale-holder',
+      colspan: 7,
+      focusSelector: '.jewel-purchase-price',
+    });
+  }
+
+  function openEditSaleForm(saleId) {
+    closeInlineForms();
+    const sale = sales().find((s) => s.id === saleId);
+    if (!sale) return;
+    const item = items().find((i) => i.id === sale.itemId);
+    if (!item) return;
+
+    const form = buildSaleForm(item.name, sale);
+    form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      Object.assign(sale, readSaleForm(form, sale));
+      saveData();
+      render();
+    });
+
+    insertInlineForm(form, {
+      afterRowSelector: `.jewel-sales-table tr[data-sale-id="${saleId}"]`,
+      holderClass: 'edit-jewel-sale-holder',
+      colspan: 8,
+      focusSelector: '.jewel-purchase-price',
+    });
+  }
+
+  function openEditItemForm(itemId) {
+    closeInlineForms();
+    const item = items().find((i) => i.id === itemId);
+    if (!item) return;
+
+    const template = document.getElementById(cfg.editTemplateId);
+    const form = template.content.firstElementChild.cloneNode(true);
+    form.querySelector('.jewel-name-label').textContent = item.name;
+    form.querySelector('.edit-jewel-name').value = item.name;
+
+    form.querySelector('.cancel-btn').addEventListener('click', () => form.closest('tr').remove());
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = form.querySelector('.edit-jewel-name').value.trim();
+      if (!name) return;
+      item.name = name;
+      saveData();
+      render();
+    });
+
+    insertInlineForm(form, {
+      afterRowSelector: `#${cfg.tableBodyId} tr[data-item-id="${itemId}"]`,
+      holderClass: 'edit-jewel-holder',
+      colspan: 7,
+      focusSelector: '.edit-jewel-name',
+    });
+  }
+
+  function buildDetailRowHtml(item) {
+    if (state[cfg.openDetailKey] !== item.id) return '';
+
+    const itemSales = getSalesForItem(item.id).slice().sort((a, b) => new Date(b.listedDate) - new Date(a.listedDate));
+
+    const rowsHtml = itemSales.length === 0
+      ? '<tr><td colspan="8" class="empty-state">Aucun achat enregistré</td></tr>'
+      : itemSales.map((s) => {
+        const sold = saleIsSold(s);
+        const gain = saleGain(s);
+        const delay = saleDelay(s);
+        const gainCls = gain === null ? '' : gain >= 0 ? 'gain-positive' : 'gain-negative';
+        const gainLabel = gain === null ? '—' : (gain >= 0 ? '+' : '') + formatKamas(gain);
+        const statusBadge = sold
+          ? '<span class="badge rentable">Vendu</span>'
+          : '<span class="badge no-data">En vente</span>';
+        return `
+          <tr data-sale-id="${s.id}">
+            <td>${new Date(s.listedDate).toLocaleDateString('fr-FR')}</td>
+            <td>${formatKamas(s.purchasePrice)}</td>
+            <td>${statusBadge}</td>
+            <td>${s.saleDate ? new Date(s.saleDate).toLocaleDateString('fr-FR') : '—'}</td>
+            <td>${sold ? formatKamas(s.salePrice) : '—'}</td>
+            <td>${delay === null ? '—' : delay + ' j'}</td>
+            <td class="${gainCls}">${gainLabel}</td>
+            <td class="row-actions">
+              <button type="button" class="edit-jewel-sale-btn" data-id="${s.id}">Modifier</button>
+              <button type="button" class="delete-jewel-sale-btn" data-id="${s.id}">✕</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+    return `
+      <tr class="detail-row">
+        <td colspan="7">
+          <div class="detail-panel">
+            <h3>Historique — ${escapeHtml(item.name)}</h3>
+            <table class="attempts-table jewel-sales-table">
+              <thead>
+                <tr><th>Mise en vente</th><th>Prix d'achat</th><th>Statut</th><th>Date de vente</th><th>Prix de vente</th><th>Délai</th><th>Gain</th><th class="actions-col"></th></tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  function renderTotals() {
+    const totalInvested = sales().reduce((s, e) => s + e.purchasePrice, 0);
+    const totalCollected = sales().reduce((s, e) => s + (saleIsSold(e) ? e.salePrice : 0), 0);
+    const net = totalCollected - totalInvested;
+
+    document.getElementById(cfg.totalInvestedElId).textContent = formatKamas(totalInvested);
+    document.getElementById(cfg.totalCollectedElId).textContent = formatKamas(totalCollected);
+
+    const netEl = document.getElementById(cfg.totalNetElId);
+    netEl.textContent = (net >= 0 ? '+' : '') + formatKamas(net);
+    netEl.classList.remove('gain-positive', 'gain-negative');
+    netEl.classList.add(net >= 0 ? 'gain-positive' : 'gain-negative');
+  }
+
+  document.getElementById(cfg.refreshBtnId).addEventListener('click', async () => {
+    const btn = document.getElementById(cfg.refreshBtnId);
+    btn.disabled = true;
+    state.data = await loadData();
+    render();
+    btn.disabled = false;
+  });
+
+  return { renderTable };
 }
 
-function buildJewelDetailRowHtml(jewel) {
-  if (state.openJewelDetailId !== jewel.id) return '';
+const jewelryPage = createFlipPage({
+  itemsKey: 'jewels',
+  salesKey: 'jewelSales',
+  sortKey: 'jewelrySort',
+  searchKey: 'jewelrySearchQuery',
+  openDetailKey: 'openJewelDetailId',
+  foldKey: 'jewelryFoldNonProfitable',
+  tableId: 'jewelry-table',
+  tableBodyId: 'jewelry-table-body',
+  addItemFormId: 'add-jewel-form',
+  itemNameInputId: 'jewel-name',
+  itemPriceInputId: 'jewel-purchase-price',
+  showAddItemBtnId: 'show-add-jewel-btn',
+  searchInputId: 'jewel-search',
+  refreshBtnId: 'jewelry-refresh-btn',
+  entryTemplateId: 'jewel-entry-template',
+  editTemplateId: 'edit-jewel-template',
+  totalInvestedElId: 'jewelry-total-invested',
+  totalCollectedElId: 'jewelry-total-collected',
+  totalNetElId: 'jewelry-total-net',
+  itemNoun: 'bijou',
+  itemNounPluralCap: 'Bijoux',
+  addButtonLabel: '+ Nouveau bijou',
+});
 
-  const sales = getJewelSales(jewel.id).slice().sort((a, b) => new Date(b.listedDate) - new Date(a.listedDate));
-
-  const rowsHtml = sales.length === 0
-    ? '<tr><td colspan="8" class="empty-state">Aucun achat enregistré</td></tr>'
-    : sales.map((s) => {
-      const sold = jewelSaleIsSold(s);
-      const gain = jewelSaleGain(s);
-      const delay = jewelSaleDelay(s);
-      const gainCls = gain === null ? '' : gain >= 0 ? 'gain-positive' : 'gain-negative';
-      const gainLabel = gain === null ? '—' : (gain >= 0 ? '+' : '') + formatKamas(gain);
-      const statusBadge = sold
-        ? '<span class="badge rentable">Vendu</span>'
-        : '<span class="badge no-data">En vente</span>';
-      return `
-        <tr data-sale-id="${s.id}">
-          <td>${new Date(s.listedDate).toLocaleDateString('fr-FR')}</td>
-          <td>${formatKamas(s.purchasePrice)}</td>
-          <td>${statusBadge}</td>
-          <td>${s.saleDate ? new Date(s.saleDate).toLocaleDateString('fr-FR') : '—'}</td>
-          <td>${sold ? formatKamas(s.salePrice) : '—'}</td>
-          <td>${delay === null ? '—' : delay + ' j'}</td>
-          <td class="${gainCls}">${gainLabel}</td>
-          <td class="row-actions">
-            <button type="button" class="edit-jewel-sale-btn" data-id="${s.id}">Modifier</button>
-            <button type="button" class="delete-jewel-sale-btn" data-id="${s.id}">✕</button>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-  return `
-    <tr class="detail-row">
-      <td colspan="7">
-        <div class="detail-panel">
-          <h3>Historique — ${escapeHtml(jewel.name)}</h3>
-          <table class="attempts-table jewel-sales-table">
-            <thead>
-              <tr><th>Mise en vente</th><th>Prix d'achat</th><th>Statut</th><th>Date de vente</th><th>Prix de vente</th><th>Délai</th><th>Gain</th><th class="actions-col"></th></tr>
-            </thead>
-            <tbody>${rowsHtml}</tbody>
-          </table>
-        </div>
-      </td>
-    </tr>
-  `;
-}
-
-function renderJewelryTotals() {
-  const totalInvested = state.data.jewelSales.reduce((s, e) => s + e.purchasePrice, 0);
-  const totalCollected = state.data.jewelSales.reduce((s, e) => s + (jewelSaleIsSold(e) ? e.salePrice : 0), 0);
-  const net = totalCollected - totalInvested;
-
-  document.getElementById('jewelry-total-invested').textContent = formatKamas(totalInvested);
-  document.getElementById('jewelry-total-collected').textContent = formatKamas(totalCollected);
-
-  const netEl = document.getElementById('jewelry-total-net');
-  netEl.textContent = (net >= 0 ? '+' : '') + formatKamas(net);
-  netEl.classList.remove('gain-positive', 'gain-negative');
-  netEl.classList.add(net >= 0 ? 'gain-positive' : 'gain-negative');
-}
-
-document.getElementById('jewelry-refresh-btn').addEventListener('click', async () => {
-  const btn = document.getElementById('jewelry-refresh-btn');
-  btn.disabled = true;
-  state.data = await loadData();
-  render();
-  btn.disabled = false;
+const sculptoPage = createFlipPage({
+  itemsKey: 'sculptoItems',
+  salesKey: 'sculptoSales',
+  sortKey: 'sculptoSort',
+  searchKey: 'sculptoSearchQuery',
+  openDetailKey: 'openSculptoDetailId',
+  foldKey: 'sculptoFoldNonProfitable',
+  tableId: 'sculpto-table',
+  tableBodyId: 'sculpto-table-body',
+  addItemFormId: 'add-sculpto-form',
+  itemNameInputId: 'sculpto-name',
+  itemPriceInputId: 'sculpto-purchase-price',
+  showAddItemBtnId: 'show-add-sculpto-btn',
+  searchInputId: 'sculpto-search',
+  refreshBtnId: 'sculpto-refresh-btn',
+  entryTemplateId: 'sculpto-entry-template',
+  editTemplateId: 'edit-sculpto-template',
+  totalInvestedElId: 'sculpto-total-invested',
+  totalCollectedElId: 'sculpto-total-collected',
+  totalNetElId: 'sculpto-total-net',
+  itemNoun: 'objet',
+  itemNounPluralCap: 'Objets',
+  addButtonLabel: '+ Nouvel objet',
 });
 
 // ---------- Rune price impact simulator ----------
@@ -1726,8 +1778,8 @@ function render() {
   runePaPage.renderTable();
   sculpteurPage.renderTable();
   forgeronPage.renderTable();
-  renderJewelryTable();
-  renderJewelryTotals();
+  jewelryPage.renderTable();
+  sculptoPage.renderTable();
   renderSimulatorRuneOptions();
   runSimulator();
 }
