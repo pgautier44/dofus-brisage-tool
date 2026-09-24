@@ -262,6 +262,9 @@ tbody tr:hover { background: var(--row-hover); }
 tr.jewel-row-opportunity { background: #e6f6e0; }
 tr.jewel-row-opportunity:hover { background: #d7efce; }
 
+tr.jewel-row-craft-expensive { background: #fdecec; }
+tr.jewel-row-craft-expensive:hover { background: #fbdada; }
+
 .badge {
   display: inline-block;
   padding: 4px 10px;

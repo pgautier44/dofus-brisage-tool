@@ -1235,8 +1235,16 @@ function createFlipPage(cfg) {
       ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
       : '';
     const isOpen = state[cfg.openDetailKey] === item.id;
+    const craftTooExpensiveCell = cfg.showCraftTooExpensive
+      ? `<td class="brisage-checkbox-cell"><input type="checkbox" class="craft-too-expensive-checkbox" data-id="${item.id}" ${item.craftTooExpensive ? 'checked' : ''}></td>`
+      : '';
+    const rowCls = [
+      'clickable-row',
+      isOpportunity ? 'jewel-row-opportunity' : '',
+      cfg.showCraftTooExpensive && item.craftTooExpensive ? 'jewel-row-craft-expensive' : '',
+    ].filter(Boolean).join(' ');
     return `
-      <tr data-item-id="${item.id}" class="clickable-row${isOpportunity ? ' jewel-row-opportunity' : ''}">
+      <tr data-item-id="${item.id}" class="${rowCls}">
         <td>
           <span class="expand-arrow">${isOpen ? '▼' : '▶'}</span>
           ${opportunityIcon}<span class="name-link" title="Cliquer pour renommer">${escapeHtml(item.name)}</span>
@@ -1249,6 +1257,7 @@ function createFlipPage(cfg) {
           <span class="badge ${cat.cls}">${cat.label}</span>
           <div class="ratio-note">${stats.avgRatio !== null ? ratioLabel + " du prix d'achat" : ''}</div>
         </td>
+        ${craftTooExpensiveCell}
         <td class="row-actions">
           <button type="button" class="add-sale-btn primary-btn" data-id="${item.id}">+ Nouvel achat</button>
           <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
@@ -1267,7 +1276,7 @@ function createFlipPage(cfg) {
       const message = q
         ? `Aucun ${cfg.itemNoun} ne correspond à "${escapeHtml(q)}".`
         : `Aucun ${cfg.itemNoun} pour le moment. Ajoute-en un avec "${cfg.addButtonLabel}".`;
-      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="${cfg.mainColspan || 7}" class="empty-state">${message}</td></tr>`;
     } else {
       const profitableRows = rows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls !== 'pas-rentable');
       const nonProfitableRows = rows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls === 'pas-rentable');
@@ -1278,7 +1287,7 @@ function createFlipPage(cfg) {
       if (nonProfitableRows.length > 0) {
         html += `
           <tr class="fold-toggle-row" data-fold-toggle="1">
-            <td colspan="7">
+            <td colspan="${cfg.mainColspan || 7}">
               <span class="expand-arrow">${folded ? '▶' : '▼'}</span>
               📁 ${cfg.itemNounPluralCap} non rentables (${nonProfitableRows.length})
             </td>
@@ -1304,6 +1313,10 @@ function createFlipPage(cfg) {
       row.addEventListener('click', (e) => {
         const id = row.dataset.itemId;
         if (e.target.closest('.row-actions')) return;
+        // Replacing the row's DOM mid-click (via renderTable()) stops the checkbox's own
+        // pending 'change' event from ever firing, so never re-render in reaction to a
+        // click that landed on it — let its own change listener handle that.
+        if (e.target.closest('.craft-too-expensive-checkbox')) return;
         if (e.target.closest('.name-link')) {
           openEditItemForm(id);
           return;
@@ -1337,6 +1350,15 @@ function createFlipPage(cfg) {
         if (state[cfg.openDetailKey] === id) state[cfg.openDetailKey] = null;
         saveData();
         render();
+      });
+    });
+    tbody.querySelectorAll('.craft-too-expensive-checkbox').forEach((checkbox) => {
+      checkbox.addEventListener('change', (e) => {
+        const item = items().find((i) => i.id === e.target.dataset.id);
+        if (!item) return;
+        item.craftTooExpensive = e.target.checked;
+        saveData();
+        renderTable();
       });
     });
 
@@ -1406,7 +1428,7 @@ function createFlipPage(cfg) {
     insertInlineForm(form, {
       afterRowSelector: `#${cfg.tableBodyId} tr[data-item-id="${itemId}"]`,
       holderClass: 'add-jewel-sale-holder',
-      colspan: 7,
+      colspan: cfg.mainColspan || 7,
       focusSelector: '.jewel-purchase-price',
     });
   }
@@ -1460,7 +1482,7 @@ function createFlipPage(cfg) {
     insertInlineForm(form, {
       afterRowSelector: `#${cfg.tableBodyId} tr[data-item-id="${itemId}"]`,
       holderClass: 'edit-jewel-holder',
-      colspan: 7,
+      colspan: cfg.mainColspan || 7,
       focusSelector: '.edit-jewel-name',
     });
   }
@@ -1500,7 +1522,7 @@ function createFlipPage(cfg) {
 
     return `
       <tr class="detail-row">
-        <td colspan="7">
+        <td colspan="${cfg.mainColspan || 7}">
           <div class="detail-panel">
             <h3>Historique — ${escapeHtml(item.name)}</h3>
             <table class="attempts-table jewel-sales-table">
@@ -1563,6 +1585,8 @@ const jewelryPage = createFlipPage({
   itemNoun: 'bijou',
   itemNounPluralCap: 'Bijoux',
   addButtonLabel: '+ Nouveau bijou',
+  showCraftTooExpensive: true,
+  mainColspan: 8,
 });
 
 const sculptoPage = createFlipPage({
