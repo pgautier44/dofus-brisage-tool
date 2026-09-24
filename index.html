@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20260921c">
+<link rel="stylesheet" href="style.css?v=20260924">
 </head>
 <body class="loading">
 <header>
@@ -16,12 +16,10 @@
 
   <div class="tabs" role="tablist">
     <button type="button" class="tab-btn active" data-tab="items" role="tab" aria-selected="true">Rune Pa</button>
-    <button type="button" class="tab-btn" data-tab="sculpteur" role="tab" aria-selected="false">Sculpteur</button>
-    <button type="button" class="tab-btn" data-tab="forgeron" role="tab" aria-selected="false">Forgeron</button>
+    <button type="button" class="tab-btn" data-tab="brisage" role="tab" aria-selected="false">Brisage</button>
     <button type="button" class="tab-btn" data-tab="jewelry" role="tab" aria-selected="false">Bijoutier/Joaillo</button>
     <button type="button" class="tab-btn" data-tab="sculpto" role="tab" aria-selected="false">Sculpteur/Sculto</button>
     <button type="button" class="tab-btn" data-tab="runes" role="tab" aria-selected="false">Types de runes</button>
-    <button type="button" class="tab-btn" data-tab="simulator" role="tab" aria-selected="false">Simulateur</button>
   </div>
 
   <section class="card legacy-banner hidden" id="legacy-import-banner">
@@ -117,131 +115,59 @@
     </div>
   </section>
 
-  <section class="card hidden" id="sculptor-section" data-tab-panel="sculpteur">
+  <section class="card hidden" id="brisage-section" data-tab-panel="brisage">
     <div class="section-header">
-      <h2>Sculpteur</h2>
+      <h2>Brisage</h2>
       <div class="section-header-actions">
-        <button id="sculptor-refresh-btn" class="secondary-btn" title="Recharger les données depuis le serveur (pour voir les changements faits sur un autre PC)">🔄 Actualiser</button>
-        <button id="show-add-sculptor-item-btn" class="primary-btn">+ Nouvel objet</button>
+        <button id="brisage-refresh-btn" class="secondary-btn" title="Recharger les données depuis le serveur (pour voir les changements faits sur un autre PC)">🔄 Actualiser</button>
+        <button id="show-add-brisage-btn" class="primary-btn">+ Nouvel objet</button>
       </div>
     </div>
 
-    <form id="add-sculptor-item-form" class="panel hidden">
+    <form id="add-brisage-form" class="panel hidden">
       <h3>Nouvel objet</h3>
       <label>Nom de l'objet
-        <input type="text" id="sculptor-item-name" required>
+        <input type="text" id="brisage-name" required>
       </label>
-      <p class="hint">Le coût de craft, le % de brisage et les runes obtenues se renseignent essai par essai (ils peuvent varier d'une fois à l'autre) via "+ Nouvel essai".</p>
+      <label>Prix d'achat (kamas)
+        <input type="number" id="brisage-purchase-price" min="0" step="1">
+      </label>
+      <label>Prix de craft (kamas)
+        <input type="number" id="brisage-craft-price" min="0" step="1">
+      </label>
+      <label>% rentabilité brisage
+        <input type="number" id="brisage-profitability-percent" min="0" step="0.01">
+      </label>
+      <label>% brisage
+        <input type="number" id="brisage-break-percent" min="0" step="0.01">
+      </label>
+      <label class="checkbox-field">
+        <input type="checkbox" id="brisage-still-profitable" checked>
+        Encore rentable
+      </label>
       <div class="form-actions">
         <button type="submit" class="primary-btn">Ajouter</button>
-        <button type="button" class="cancel-btn" data-cancel="add-sculptor-item-form">Annuler</button>
+        <button type="button" class="cancel-btn" data-cancel="add-brisage-form">Annuler</button>
       </div>
     </form>
 
-    <input type="search" id="sculptor-search" class="search-input" placeholder="Rechercher un objet...">
+    <input type="search" id="brisage-search" class="search-input" placeholder="Rechercher un objet...">
 
     <div class="table-wrapper">
-      <table id="sculptor-table">
+      <table id="brisage-table">
         <thead>
           <tr>
             <th data-sort="name">Objet</th>
-            <th data-sort="unitCraftCost">Prix craft unitaire (moy.)</th>
-            <th data-sort="count">Nb essais</th>
-            <th data-sort="avgPercent">% moyen brisage</th>
-            <th data-sort="avgValue">Gain runes (moyen)</th>
-            <th data-sort="netGain">Gain net</th>
-            <th data-sort="ratio">Rentabilité</th>
+            <th data-sort="purchasePrice">Prix d'achat</th>
+            <th data-sort="craftPrice">Prix de craft</th>
+            <th data-sort="profitabilityPercent">% rentabilité brisage</th>
+            <th data-sort="breakPercent">% brisage</th>
+            <th data-sort="stillProfitable">Rentable</th>
             <th class="actions-col">Actions</th>
           </tr>
         </thead>
-        <tbody id="sculptor-table-body"></tbody>
+        <tbody id="brisage-table-body"></tbody>
       </table>
-    </div>
-    <p class="hint legend">
-      <span class="badge rentable">Rentable</span>
-      <span class="badge rel-rentable">Relativement rentable</span>
-      <span class="badge rel-pas-rentable">Relativement pas rentable</span>
-      <span class="badge pas-rentable">Pas rentable</span>
-      <span class="badge no-data">Pas assez de données</span>
-    </p>
-
-    <div class="totals-bar">
-      <div class="totals-stat">
-        <span class="totals-label">Coût total de craft</span>
-        <span class="totals-value" id="sculptor-total-cost">—</span>
-      </div>
-      <div class="totals-stat">
-        <span class="totals-label">Valeur totale des runes obtenues</span>
-        <span class="totals-value" id="sculptor-total-value">—</span>
-      </div>
-      <div class="totals-stat totals-stat-main">
-        <span class="totals-label">Rentabilité totale</span>
-        <span class="totals-value" id="sculptor-total-net">—</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="card hidden" id="forgeron-section" data-tab-panel="forgeron">
-    <div class="section-header">
-      <h2>Forgeron</h2>
-      <div class="section-header-actions">
-        <button id="forgeron-refresh-btn" class="secondary-btn" title="Recharger les données depuis le serveur (pour voir les changements faits sur un autre PC)">🔄 Actualiser</button>
-        <button id="show-add-forgeron-item-btn" class="primary-btn">+ Nouvel objet</button>
-      </div>
-    </div>
-
-    <form id="add-forgeron-item-form" class="panel hidden">
-      <h3>Nouvel objet</h3>
-      <label>Nom de l'objet
-        <input type="text" id="forgeron-item-name" required>
-      </label>
-      <p class="hint">Le coût de craft, le % de brisage et les runes obtenues se renseignent essai par essai (ils peuvent varier d'une fois à l'autre) via "+ Nouvel essai".</p>
-      <div class="form-actions">
-        <button type="submit" class="primary-btn">Ajouter</button>
-        <button type="button" class="cancel-btn" data-cancel="add-forgeron-item-form">Annuler</button>
-      </div>
-    </form>
-
-    <input type="search" id="forgeron-search" class="search-input" placeholder="Rechercher un objet...">
-
-    <div class="table-wrapper">
-      <table id="forgeron-table">
-        <thead>
-          <tr>
-            <th data-sort="name">Objet</th>
-            <th data-sort="unitCraftCost">Prix craft unitaire (moy.)</th>
-            <th data-sort="count">Nb essais</th>
-            <th data-sort="avgPercent">% moyen brisage</th>
-            <th data-sort="avgValue">Gain runes (moyen)</th>
-            <th data-sort="netGain">Gain net</th>
-            <th data-sort="ratio">Rentabilité</th>
-            <th class="actions-col">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="forgeron-table-body"></tbody>
-      </table>
-    </div>
-    <p class="hint legend">
-      <span class="badge rentable">Rentable</span>
-      <span class="badge rel-rentable">Relativement rentable</span>
-      <span class="badge rel-pas-rentable">Relativement pas rentable</span>
-      <span class="badge pas-rentable">Pas rentable</span>
-      <span class="badge no-data">Pas assez de données</span>
-    </p>
-
-    <div class="totals-bar">
-      <div class="totals-stat">
-        <span class="totals-label">Coût total de craft</span>
-        <span class="totals-value" id="forgeron-total-cost">—</span>
-      </div>
-      <div class="totals-stat">
-        <span class="totals-label">Valeur totale des runes obtenues</span>
-        <span class="totals-value" id="forgeron-total-value">—</span>
-      </div>
-      <div class="totals-stat totals-stat-main">
-        <span class="totals-label">Rentabilité totale</span>
-        <span class="totals-value" id="forgeron-total-net">—</span>
-      </div>
     </div>
   </section>
 
@@ -373,48 +299,6 @@
     <p class="hint">Tant qu'un objet n'est pas vendu, son prix d'achat compte en négatif (capital immobilisé) ; une fois vendu, c'est le gain réel (vente − achat) qui compte.</p>
   </section>
 
-  <section class="card hidden" id="simulator-section" data-tab-panel="simulator">
-    <h2>Simulateur de prix de rune</h2>
-    <p class="hint">Choisis une rune puis ajuste ses prix simple / Pa (x3) / Ra (x9) : tous les objets (Rune Pa, Sculpteur, Forgeron) qui en donnent s'affichent triés par rentabilité simulée, pour savoir lesquels prioriser suite à une variation de prix. Les runes des autres types gardent leur valeur actuelle. Les champs sont préremplis avec les prix actuels de la rune, modifie uniquement ceux qui changent.</p>
-
-    <div class="panel">
-      <label>Rune
-        <select id="sim-rune-select">
-          <option value="">Choisir une rune...</option>
-        </select>
-      </label>
-      <div class="sim-price-fields">
-        <label>Prix simple (kamas)
-          <input type="number" id="sim-price-input" min="0" step="1" placeholder="Ex : 20000">
-        </label>
-        <label>Prix Pa / x3 (kamas)
-          <input type="number" id="sim-price-x3-input" min="0" step="1" placeholder="Non défini">
-        </label>
-        <label>Prix Ra / x9 (kamas)
-          <input type="number" id="sim-price-x9-input" min="0" step="1" placeholder="Non défini">
-        </label>
-      </div>
-    </div>
-
-    <div class="table-wrapper">
-      <table id="sim-results-table">
-        <thead>
-          <tr>
-            <th>Objet</th>
-            <th>Page</th>
-            <th>Nb essais</th>
-            <th>Rentabilité actuelle</th>
-            <th>Rentabilité simulée</th>
-            <th>Gain net simulé</th>
-          </tr>
-        </thead>
-        <tbody id="sim-results-body">
-          <tr><td colspan="6" class="empty-state">Choisis une rune et un prix pour voir les objets concernés.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
 
 </main>
 
@@ -536,6 +420,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260921d"></script>
+<script src="app.js?v=20260924"></script>
 </body>
 </html>

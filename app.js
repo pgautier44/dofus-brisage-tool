@@ -33,7 +33,7 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [] };
+    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [] };
   }
 
   const d = data.data || {};
@@ -42,6 +42,8 @@ async function loadData() {
     runeCategories: d.runeCategories || [],
     items: d.items || [],
     attempts: d.attempts || [],
+    // sculptorItems/sculptorAttempts/forgeronItems/forgeronAttempts: those pages were
+    // removed, but keep reading these back so a save doesn't erase that leftover data.
     sculptorItems: d.sculptorItems || [],
     sculptorAttempts: d.sculptorAttempts || [],
     forgeronItems: d.forgeronItems || [],
@@ -50,6 +52,7 @@ async function loadData() {
     jewelSales: d.jewelSales || [],
     sculptoItems: d.sculptoItems || [],
     sculptoSales: d.sculptoSales || [],
+    brisageItems: d.brisageItems || [],
   };
 }
 
@@ -110,19 +113,14 @@ function showAlert(message) {
 const RUNE_CATEGORY_PALETTE = ['#c9720f', '#2f9e44', '#1971c2', '#9c36b5', '#e8590c', '#0c8599', '#e03131', '#5c940d'];
 
 const state = {
-  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [] },
+  // sculptorItems/sculptorAttempts/forgeronItems/forgeronAttempts are kept here (even
+  // though those pages were removed) so a save never strips that data out of the
+  // shared Supabase row — loadData() still reads them back in on every load.
+  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [] },
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
   foldNonProfitable: true,
-  sculptorSort: { column: 'ratio', direction: 'desc' },
-  openSculptorDetailId: null,
-  sculptorSearchQuery: '',
-  sculptorFoldNonProfitable: true,
-  forgeronSort: { column: 'ratio', direction: 'desc' },
-  openForgeronDetailId: null,
-  forgeronSearchQuery: '',
-  forgeronFoldNonProfitable: true,
   jewelrySort: { column: 'avgRatio', direction: 'desc' },
   openJewelDetailId: null,
   jewelrySearchQuery: '',
@@ -131,6 +129,8 @@ const state = {
   openSculptoDetailId: null,
   sculptoSearchQuery: '',
   sculptoFoldNonProfitable: true,
+  brisageSort: { column: 'name', direction: 'asc' },
+  brisageSearchQuery: '',
 };
 
 function todayISODate() {
@@ -890,44 +890,6 @@ const runePaPage = createCraftPage({
   foldKey: 'foldNonProfitable',
 });
 
-const sculpteurPage = createCraftPage({
-  itemsKey: 'sculptorItems',
-  attemptsKey: 'sculptorAttempts',
-  sortKey: 'sculptorSort',
-  searchKey: 'sculptorSearchQuery',
-  openDetailKey: 'openSculptorDetailId',
-  tableId: 'sculptor-table',
-  tableBodyId: 'sculptor-table-body',
-  addItemFormId: 'add-sculptor-item-form',
-  itemNameInputId: 'sculptor-item-name',
-  showAddItemBtnId: 'show-add-sculptor-item-btn',
-  searchInputId: 'sculptor-search',
-  refreshBtnId: 'sculptor-refresh-btn',
-  totalCostElId: 'sculptor-total-cost',
-  totalValueElId: 'sculptor-total-value',
-  totalNetElId: 'sculptor-total-net',
-  foldKey: 'sculptorFoldNonProfitable',
-});
-
-const forgeronPage = createCraftPage({
-  itemsKey: 'forgeronItems',
-  attemptsKey: 'forgeronAttempts',
-  sortKey: 'forgeronSort',
-  searchKey: 'forgeronSearchQuery',
-  openDetailKey: 'openForgeronDetailId',
-  tableId: 'forgeron-table',
-  tableBodyId: 'forgeron-table-body',
-  addItemFormId: 'add-forgeron-item-form',
-  itemNameInputId: 'forgeron-item-name',
-  showAddItemBtnId: 'show-add-forgeron-item-btn',
-  searchInputId: 'forgeron-search',
-  refreshBtnId: 'forgeron-refresh-btn',
-  totalCostElId: 'forgeron-total-cost',
-  totalValueElId: 'forgeron-total-value',
-  totalNetElId: 'forgeron-total-net',
-  foldKey: 'forgeronFoldNonProfitable',
-});
-
 // ---------- Add attempt form ----------
 
 function buildRuneRow(prefill) {
@@ -1628,141 +1590,155 @@ const sculptoPage = createFlipPage({
   addButtonLabel: '+ Nouvel objet',
 });
 
-// ---------- Rune price impact simulator ----------
-// Answers "if this rune's price changes, which items should I prioritize
-// breaking?" — recomputes each item's profitability with a hypothetical
-// price for one rune type, using its known essais otherwise unchanged.
+// ---------- Brisage (simple, manually-entered items — no essai tracking) ----------
 
-const SIMULATOR_PAGES = [
-  { key: 'items', label: 'Rune Pa', itemsKey: 'items', attemptsKey: 'attempts' },
-  { key: 'sculpteur', label: 'Sculpteur', itemsKey: 'sculptorItems', attemptsKey: 'sculptorAttempts' },
-  { key: 'forgeron', label: 'Forgeron', itemsKey: 'forgeronItems', attemptsKey: 'forgeronAttempts' },
-];
-
-function renderSimulatorRuneOptions() {
-  const select = document.getElementById('sim-rune-select');
-  const previousValue = select.value;
-  const groups = runeCategoryGroups().filter((g) => g.runes.length > 0);
-
-  select.innerHTML =
-    '<option value="">Choisir une rune...</option>' +
-    groups
-      .map((g) => {
-        const options = g.runes.map((rt) => `<option value="${rt.id}">${escapeHtml(rt.name)}</option>`).join('');
-        return `<optgroup label="${escapeHtml(g.name)}">${options}</optgroup>`;
-      })
-      .join('');
-
-  if ([...select.options].some((o) => o.value === previousValue)) {
-    select.value = previousValue;
-  }
-}
-
-// Same greedy tiering as runeLineValue (max x9 groups, then x3 on the
-// remainder, then simple price on what's left), but against hypothetical
-// simple/x3/x9 prices instead of the rune type's stored ones.
-function simulatedRuneLineValue(r, overrideTypeId, overrides) {
-  if (r.typeId !== overrideTypeId) return runeLineValue(r);
-
-  let qty = r.qty;
-  const n9 = overrides.x9 ? Math.floor(qty / 9) : 0;
-  qty -= n9 * 9;
-  const n3 = overrides.x3 ? Math.floor(qty / 3) : 0;
-  qty -= n3 * 3;
-  const n1 = qty;
-
-  return n9 * (overrides.x9 || 0) + n3 * (overrides.x3 || 0) + n1 * overrides.simple;
-}
-
-function simulatedAttemptValue(attempt, overrideTypeId, overrides) {
-  return attempt.runes.reduce((sum, r) => sum + simulatedRuneLineValue(r, overrideTypeId, overrides), 0);
-}
-
-document.getElementById('sim-rune-select').addEventListener('change', () => {
-  const runeTypeId = document.getElementById('sim-rune-select').value;
-  const rt = state.data.runeTypes.find((r) => r.id === runeTypeId);
-  document.getElementById('sim-price-input').value = rt ? rt.price : '';
-  document.getElementById('sim-price-x3-input').value = rt && rt.x3Price ? rt.x3Price : '';
-  document.getElementById('sim-price-x9-input').value = rt && rt.x9Price ? rt.x9Price : '';
-  runSimulator();
+document.getElementById('show-add-brisage-btn').addEventListener('click', () => {
+  document.getElementById('add-brisage-form').classList.toggle('hidden');
 });
 
-function runSimulator() {
-  const runeTypeId = document.getElementById('sim-rune-select').value;
-  const priceInput = document.getElementById('sim-price-input');
-  const priceX3Input = document.getElementById('sim-price-x3-input');
-  const priceX9Input = document.getElementById('sim-price-x9-input');
-  const tbody = document.getElementById('sim-results-body');
+document.getElementById('brisage-search').addEventListener('input', (e) => {
+  state.brisageSearchQuery = e.target.value.trim().toLowerCase();
+  renderBrisageTable();
+});
 
-  if (!runeTypeId || priceInput.value === '') {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Choisis une rune et un prix pour voir les objets concernés.</td></tr>';
-    return;
-  }
-
-  const overrides = {
-    simple: Number(priceInput.value) || 0,
-    x3: priceX3Input.value === '' ? null : Number(priceX3Input.value) || 0,
-    x9: priceX9Input.value === '' ? null : Number(priceX9Input.value) || 0,
-  };
-
-  const rows = SIMULATOR_PAGES.flatMap((pageCfg) => {
-    const items = state.data[pageCfg.itemsKey];
-    const attempts = state.data[pageCfg.attemptsKey];
-
-    return items
-      .map((item) => {
-        const atts = attempts.filter((a) => a.itemId === item.id);
-        const hasRune = atts.some((a) => a.runes.some((r) => r.typeId === runeTypeId));
-        if (atts.length === 0 || !hasRune) return null;
-
-        const avgCraftCost = atts.reduce((s, a) => s + a.craftCost, 0) / atts.length;
-        const currentAvgValue = atts.reduce((s, a) => s + attemptValue(a), 0) / atts.length;
-        const simAvgValue = atts.reduce((s, a) => s + simulatedAttemptValue(a, runeTypeId, overrides), 0) / atts.length;
-
-        const currentRatio = avgCraftCost ? currentAvgValue / avgCraftCost : null;
-        const simRatio = avgCraftCost ? simAvgValue / avgCraftCost : null;
-        const simNetGain = simAvgValue - avgCraftCost;
-
-        return { item, pageLabel: pageCfg.label, count: atts.length, currentRatio, simRatio, simNetGain };
-      })
-      .filter(Boolean);
+document.getElementById('add-brisage-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.getElementById('brisage-name').value.trim();
+  if (!name) return;
+  state.data.brisageItems.push({
+    id: uid(),
+    name,
+    purchasePrice: Number(document.getElementById('brisage-purchase-price').value) || 0,
+    craftPrice: Number(document.getElementById('brisage-craft-price').value) || 0,
+    profitabilityPercent: Number(document.getElementById('brisage-profitability-percent').value) || 0,
+    breakPercent: Number(document.getElementById('brisage-break-percent').value) || 0,
+    stillProfitable: document.getElementById('brisage-still-profitable').checked,
   });
+  saveData();
+  e.target.reset();
+  document.getElementById('brisage-still-profitable').checked = true;
+  document.getElementById('add-brisage-form').classList.add('hidden');
+  render();
+});
+
+document.querySelectorAll('#brisage-table th[data-sort]').forEach((th) => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.sort;
+    const sort = state.brisageSort;
+    if (sort.column === col) {
+      sort.direction = sort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      sort.column = col;
+      sort.direction = col === 'name' ? 'asc' : 'desc';
+    }
+    renderBrisageTable();
+  });
+});
+
+document.getElementById('brisage-refresh-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('brisage-refresh-btn');
+  btn.disabled = true;
+  state.data = await loadData();
+  render();
+  btn.disabled = false;
+});
+
+function sortedBrisageItems() {
+  const { column, direction } = state.brisageSort;
+  const q = state.brisageSearchQuery;
+  const list = q ? state.data.brisageItems.filter((it) => it.name.toLowerCase().includes(q)) : state.data.brisageItems;
+  const rows = list.slice();
 
   rows.sort((a, b) => {
-    if (a.simRatio === null) return 1;
-    if (b.simRatio === null) return -1;
-    return b.simRatio - a.simRatio;
+    let va = a[column];
+    let vb = b[column];
+    if (column === 'name') {
+      va = a.name.toLowerCase();
+      vb = b.name.toLowerCase();
+    } else if (column === 'stillProfitable') {
+      va = a.stillProfitable ? 1 : 0;
+      vb = b.stillProfitable ? 1 : 0;
+    }
+    if (va < vb) return direction === 'asc' ? -1 : 1;
+    if (va > vb) return direction === 'asc' ? 1 : -1;
+    return 0;
   });
 
-  if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Aucun objet n\'a produit cette rune jusqu\'ici.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = rows
-    .map(({ item, pageLabel, count, currentRatio, simRatio, simNetGain }) => {
-      const cat = classifyRatio(simRatio);
-      const simRatioLabel = simRatio !== null ? formatPercent(simRatio * 100, 0) : '—';
-      const currentRatioLabel = currentRatio !== null ? formatPercent(currentRatio * 100, 0) : '—';
-      const gainCls = simNetGain >= 0 ? 'gain-positive' : 'gain-negative';
-      const gainLabel = (simNetGain >= 0 ? '+' : '') + formatKamas(simNetGain);
-      return `
-        <tr>
-          <td>${escapeHtml(item.name)}</td>
-          <td>${escapeHtml(pageLabel)}</td>
-          <td>${count}</td>
-          <td>${currentRatioLabel}</td>
-          <td><span class="badge ${cat.cls}">${simRatioLabel}</span></td>
-          <td class="${gainCls}">${gainLabel}</td>
-        </tr>
-      `;
-    })
-    .join('');
+  return rows;
 }
 
-document.getElementById('sim-price-input').addEventListener('input', runSimulator);
-document.getElementById('sim-price-x3-input').addEventListener('input', runSimulator);
-document.getElementById('sim-price-x9-input').addEventListener('input', runSimulator);
+function brisageRowHtml(item) {
+  return `
+    <tr data-id="${item.id}" class="${item.stillProfitable ? '' : 'brisage-row-not-profitable'}">
+      <td><input type="text" class="brisage-field brisage-name-input" data-id="${item.id}" data-field="name" value="${escapeHtml(item.name)}"></td>
+      <td><input type="number" class="brisage-field" min="0" step="1" data-id="${item.id}" data-field="purchasePrice" value="${item.purchasePrice}"></td>
+      <td><input type="number" class="brisage-field" min="0" step="1" data-id="${item.id}" data-field="craftPrice" value="${item.craftPrice}"></td>
+      <td><input type="number" class="brisage-field" min="0" step="0.01" data-id="${item.id}" data-field="profitabilityPercent" value="${item.profitabilityPercent}"> %</td>
+      <td><input type="number" class="brisage-field" min="0" step="0.01" data-id="${item.id}" data-field="breakPercent" value="${item.breakPercent}"> %</td>
+      <td class="brisage-checkbox-cell">
+        <input type="checkbox" class="brisage-profitable-checkbox" data-id="${item.id}" ${item.stillProfitable ? 'checked' : ''}>
+      </td>
+      <td class="row-actions">
+        <button type="button" class="delete-brisage-btn" data-id="${item.id}">Supprimer</button>
+      </td>
+    </tr>
+  `;
+}
+
+function renderBrisageTable() {
+  const tbody = document.getElementById('brisage-table-body');
+  const rows = sortedBrisageItems();
+
+  if (rows.length === 0) {
+    const q = state.brisageSearchQuery;
+    const message = q
+      ? `Aucun objet ne correspond à "${escapeHtml(q)}".`
+      : 'Aucun objet pour le moment. Ajoute-en un avec "+ Nouvel objet".';
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${message}</td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map(brisageRowHtml).join('');
+  }
+
+  tbody.querySelectorAll('.brisage-field').forEach((input) => {
+    input.addEventListener('change', (e) => {
+      const item = state.data.brisageItems.find((it) => it.id === e.target.dataset.id);
+      if (!item) return;
+      const field = e.target.dataset.field;
+      if (field === 'name') {
+        const name = e.target.value.trim();
+        if (!name) { e.target.value = item.name; return; }
+        item.name = name;
+      } else {
+        item[field] = Number(e.target.value) || 0;
+      }
+      saveData();
+    });
+  });
+
+  tbody.querySelectorAll('.brisage-profitable-checkbox').forEach((checkbox) => {
+    checkbox.addEventListener('change', (e) => {
+      const item = state.data.brisageItems.find((it) => it.id === e.target.dataset.id);
+      if (!item) return;
+      item.stillProfitable = e.target.checked;
+      saveData();
+      renderBrisageTable();
+    });
+  });
+
+  tbody.querySelectorAll('.delete-brisage-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.dataset.id;
+      const item = state.data.brisageItems.find((it) => it.id === id);
+      const ok = await showConfirm(`Supprimer "${item.name}" ?`, { danger: true });
+      if (!ok) return;
+      state.data.brisageItems = state.data.brisageItems.filter((it) => it.id !== id);
+      saveData();
+      renderBrisageTable();
+    });
+  });
+
+  updateSortHeadersGeneric('brisage-table', state.brisageSort);
+}
 
 // ---------- Utils ----------
 
@@ -1776,12 +1752,9 @@ function render() {
   renderRuneTypes();
   closeInlineForms();
   runePaPage.renderTable();
-  sculpteurPage.renderTable();
-  forgeronPage.renderTable();
   jewelryPage.renderTable();
   sculptoPage.renderTable();
-  renderSimulatorRuneOptions();
-  runSimulator();
+  renderBrisageTable();
 }
 
 // ---------- Legacy localStorage import (pre-Supabase data left on a browser) ----------

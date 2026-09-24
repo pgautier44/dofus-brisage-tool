@@ -320,11 +320,17 @@ tr.jewel-row-opportunity:hover { background: #d7efce; }
 }
 .rt-price-field input[type="number"] { width: 90px; }
 
-.sim-price-fields {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+.checkbox-field {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
 }
+
+input.brisage-field { width: 100px; }
+input.brisage-name-input { width: 180px; }
+.brisage-checkbox-cell { text-align: center; }
+tr.brisage-row-not-profitable { background: #fdecec; }
+tr.brisage-row-not-profitable:hover { background: #fbdada; }
 
 .drag-handle {
   cursor: grab;
