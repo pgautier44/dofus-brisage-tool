@@ -1629,6 +1629,7 @@ document.getElementById('add-brisage-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const name = document.getElementById('brisage-name').value.trim();
   if (!name) return;
+  const stillProfitable = document.getElementById('brisage-still-profitable').checked;
   state.data.brisageItems.push({
     id: uid(),
     name,
@@ -1636,7 +1637,8 @@ document.getElementById('add-brisage-form').addEventListener('submit', (e) => {
     craftPrice: Number(document.getElementById('brisage-craft-price').value) || 0,
     profitabilityPercent: Number(document.getElementById('brisage-profitability-percent').value) || 0,
     breakPercent: Number(document.getElementById('brisage-break-percent').value) || 0,
-    stillProfitable: document.getElementById('brisage-still-profitable').checked,
+    stillProfitable,
+    profitableSince: stillProfitable ? todayISODate() : null,
   });
   saveData();
   e.target.reset();
@@ -1666,6 +1668,32 @@ document.getElementById('brisage-refresh-btn').addEventListener('click', async (
   render();
   btn.disabled = false;
 });
+
+const BRISAGE_PROFITABLE_EXPIRY_DAYS = 7;
+
+// A checked "encore rentable" is only trusted for so long — prices move. Runs on every
+// render (there's no server-side cron on a static site) so it takes effect the next
+// time anyone has the page open after the 7 days elapse, not necessarily the instant they pass.
+function expireBrisageProfitableFlags() {
+  let changed = false;
+  state.data.brisageItems.forEach((item) => {
+    if (item.stillProfitable && item.profitableSince) {
+      const ageDays = (Date.now() - new Date(item.profitableSince).getTime()) / 86400000;
+      if (ageDays >= BRISAGE_PROFITABLE_EXPIRY_DAYS) {
+        item.stillProfitable = false;
+        changed = true;
+      }
+    }
+  });
+  if (changed) saveData();
+}
+
+function brisageProfitableAgeNote(item) {
+  if (!item.stillProfitable || !item.profitableSince) return '';
+  const ageDays = Math.floor((Date.now() - new Date(item.profitableSince).getTime()) / 86400000);
+  const remaining = Math.max(0, BRISAGE_PROFITABLE_EXPIRY_DAYS - ageDays);
+  return `<div class="ratio-note">Coché ${ageDays === 0 ? "aujourd'hui" : `il y a ${ageDays} j`} (expire dans ${remaining} j)</div>`;
+}
 
 function sortedBrisageItems() {
   const { column, direction } = state.brisageSort;
@@ -1701,6 +1729,7 @@ function brisageRowHtml(item) {
       <td><input type="number" class="brisage-field" min="0" step="0.01" data-id="${item.id}" data-field="breakPercent" value="${item.breakPercent}"> %</td>
       <td class="brisage-checkbox-cell">
         <input type="checkbox" class="brisage-profitable-checkbox" data-id="${item.id}" ${item.stillProfitable ? 'checked' : ''}>
+        ${brisageProfitableAgeNote(item)}
       </td>
       <td class="row-actions">
         <button type="button" class="delete-brisage-btn" data-id="${item.id}">Supprimer</button>
@@ -1710,6 +1739,7 @@ function brisageRowHtml(item) {
 }
 
 function renderBrisageTable() {
+  expireBrisageProfitableFlags();
   const tbody = document.getElementById('brisage-table-body');
   const rows = sortedBrisageItems();
 
@@ -1744,6 +1774,7 @@ function renderBrisageTable() {
       const item = state.data.brisageItems.find((it) => it.id === e.target.dataset.id);
       if (!item) return;
       item.stillProfitable = e.target.checked;
+      item.profitableSince = e.target.checked ? todayISODate() : null;
       saveData();
       renderBrisageTable();
     });
