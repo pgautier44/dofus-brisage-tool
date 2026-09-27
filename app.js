@@ -1612,6 +1612,8 @@ const sculptoPage = createFlipPage({
   itemNoun: 'objet',
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
+  showCraftTooExpensive: true,
+  mainColspan: 8,
 });
 
 // ---------- Brisage (simple, manually-entered items — no essai tracking) ----------
