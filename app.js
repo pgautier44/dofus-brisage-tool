@@ -1640,7 +1640,7 @@ document.getElementById('add-brisage-form').addEventListener('submit', (e) => {
     profitabilityPercent: Number(document.getElementById('brisage-profitability-percent').value) || 0,
     breakPercent: Number(document.getElementById('brisage-break-percent').value) || 0,
     stillProfitable,
-    profitableSince: stillProfitable ? todayISODate() : null,
+    uncheckedSince: stillProfitable ? null : todayISODate(),
   });
   saveData();
   e.target.reset();
@@ -1671,18 +1671,20 @@ document.getElementById('brisage-refresh-btn').addEventListener('click', async (
   btn.disabled = false;
 });
 
-const BRISAGE_PROFITABLE_EXPIRY_DAYS = 7;
+const BRISAGE_RECHECK_DAYS = 7;
 
-// A checked "encore rentable" is only trusted for so long — prices move. Runs on every
-// render (there's no server-side cron on a static site) so it takes effect the next
-// time anyone has the page open after the 7 days elapse, not necessarily the instant they pass.
-function expireBrisageProfitableFlags() {
+// Unchecking "encore rentable" is meant as a temporary flag (e.g. a price spike) — it
+// re-checks itself automatically after a week to prompt giving it another look. Runs on
+// every render (there's no server-side cron on a static site), so it takes effect the
+// next time anyone has the page open after the 7 days elapse, not the instant they pass.
+function recheckBrisageProfitableFlags() {
   let changed = false;
   state.data.brisageItems.forEach((item) => {
-    if (item.stillProfitable && item.profitableSince) {
-      const ageDays = (Date.now() - new Date(item.profitableSince).getTime()) / 86400000;
-      if (ageDays >= BRISAGE_PROFITABLE_EXPIRY_DAYS) {
-        item.stillProfitable = false;
+    if (!item.stillProfitable && item.uncheckedSince) {
+      const ageDays = (Date.now() - new Date(item.uncheckedSince).getTime()) / 86400000;
+      if (ageDays >= BRISAGE_RECHECK_DAYS) {
+        item.stillProfitable = true;
+        item.uncheckedSince = null;
         changed = true;
       }
     }
@@ -1691,10 +1693,10 @@ function expireBrisageProfitableFlags() {
 }
 
 function brisageProfitableAgeNote(item) {
-  if (!item.stillProfitable || !item.profitableSince) return '';
-  const ageDays = Math.floor((Date.now() - new Date(item.profitableSince).getTime()) / 86400000);
-  const remaining = Math.max(0, BRISAGE_PROFITABLE_EXPIRY_DAYS - ageDays);
-  return `<div class="ratio-note">Coché ${ageDays === 0 ? "aujourd'hui" : `il y a ${ageDays} j`} (expire dans ${remaining} j)</div>`;
+  if (item.stillProfitable || !item.uncheckedSince) return '';
+  const ageDays = Math.floor((Date.now() - new Date(item.uncheckedSince).getTime()) / 86400000);
+  const remaining = Math.max(0, BRISAGE_RECHECK_DAYS - ageDays);
+  return `<div class="ratio-note">Décoché ${ageDays === 0 ? "aujourd'hui" : `il y a ${ageDays} j`} (recoché dans ${remaining} j)</div>`;
 }
 
 function sortedBrisageItems() {
@@ -1741,7 +1743,7 @@ function brisageRowHtml(item) {
 }
 
 function renderBrisageTable() {
-  expireBrisageProfitableFlags();
+  recheckBrisageProfitableFlags();
   const tbody = document.getElementById('brisage-table-body');
   const rows = sortedBrisageItems();
 
@@ -1776,7 +1778,7 @@ function renderBrisageTable() {
       const item = state.data.brisageItems.find((it) => it.id === e.target.dataset.id);
       if (!item) return;
       item.stillProfitable = e.target.checked;
-      item.profitableSince = e.target.checked ? todayISODate() : null;
+      item.uncheckedSince = e.target.checked ? null : todayISODate();
       saveData();
       renderBrisageTable();
     });
