@@ -327,6 +327,27 @@ tr.jewel-row-archived .badge { opacity: 0.6; }
 }
 .rt-price-field input[type="number"] { width: 90px; }
 
+.last-window-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.last-window-label { font-weight: 600; font-size: 0.9rem; }
+.last-window-bar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.last-window-bar input[type="number"] { width: 80px; }
+
 .checkbox-field {
   flex-direction: row !important;
   align-items: center;

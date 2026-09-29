@@ -33,7 +33,7 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [] };
+    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null } };
   }
 
   const d = data.data || {};
@@ -53,6 +53,8 @@ async function loadData() {
     sculptoItems: d.sculptoItems || [],
     sculptoSales: d.sculptoSales || [],
     brisageItems: d.brisageItems || [],
+    jewelryLastWindow: d.jewelryLastWindow || { min: null, max: null },
+    sculptoLastWindow: d.sculptoLastWindow || { min: null, max: null },
   };
 }
 
@@ -116,7 +118,7 @@ const state = {
   // sculptorItems/sculptorAttempts/forgeronItems/forgeronAttempts are kept here (even
   // though those pages were removed) so a save never strips that data out of the
   // shared Supabase row — loadData() still reads them back in on every load.
-  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [] },
+  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null } },
   sort: { column: 'ratio', direction: 'desc' },
   openDetailItemId: null,
   searchQuery: '',
@@ -1155,6 +1157,31 @@ function createFlipPage(cfg) {
     return { count, soldCount, avgPurchasePrice, avgDelay, totalGain, avgRatio };
   }
 
+  // "Dernière fenêtre testée" — a manually-entered level min/max, purely a note to self
+  // about which level window on the market was last checked. Not derived from anything.
+  function syncLastWindowInputs() {
+    if (!cfg.lastWindowKey) return;
+    const current = state.data[cfg.lastWindowKey] || {};
+    const minInput = document.getElementById(cfg.levelMinInputId);
+    const maxInput = document.getElementById(cfg.levelMaxInputId);
+    if (document.activeElement !== minInput) minInput.value = current.min ?? '';
+    if (document.activeElement !== maxInput) maxInput.value = current.max ?? '';
+  }
+
+  if (cfg.lastWindowKey) {
+    const minInput = document.getElementById(cfg.levelMinInputId);
+    const maxInput = document.getElementById(cfg.levelMaxInputId);
+    const saveWindow = () => {
+      state.data[cfg.lastWindowKey] = {
+        min: minInput.value === '' ? null : Number(minInput.value),
+        max: maxInput.value === '' ? null : Number(maxInput.value),
+      };
+      saveData();
+    };
+    minInput.addEventListener('change', saveWindow);
+    maxInput.addEventListener('change', saveWindow);
+  }
+
   document.getElementById(cfg.showAddItemBtnId).addEventListener('click', () => {
     document.getElementById(cfg.addItemFormId).classList.toggle('hidden');
   });
@@ -1417,6 +1444,7 @@ function createFlipPage(cfg) {
 
     updateSortHeadersGeneric(cfg.tableId, state[cfg.sortKey]);
     renderTotals();
+    syncLastWindowInputs();
   }
 
   document.querySelectorAll(`#${cfg.tableId} th[data-sort]`).forEach((th) => {
@@ -1641,6 +1669,9 @@ const jewelryPage = createFlipPage({
   addButtonLabel: '+ Nouveau bijou',
   showCraftTooExpensive: true,
   mainColspan: 8,
+  lastWindowKey: 'jewelryLastWindow',
+  levelMinInputId: 'jewelry-level-min',
+  levelMaxInputId: 'jewelry-level-max',
 });
 
 const sculptoPage = createFlipPage({
@@ -1669,6 +1700,9 @@ const sculptoPage = createFlipPage({
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
   mainColspan: 8,
+  lastWindowKey: 'sculptoLastWindow',
+  levelMinInputId: 'sculpto-level-min',
+  levelMaxInputId: 'sculpto-level-max',
 });
 
 // ---------- Brisage (simple, manually-entered items — no essai tracking) ----------

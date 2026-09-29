@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20260929">
+<link rel="stylesheet" href="style.css?v=20260929b">
 </head>
 <body class="loading">
 <header>
@@ -181,6 +181,16 @@
       </div>
     </div>
 
+    <div class="last-window-bar">
+      <span class="last-window-label">🪟 Dernière fenêtre testée :</span>
+      <label>Niveau min
+        <input type="number" id="jewelry-level-min" min="0" step="1">
+      </label>
+      <label>Niveau max
+        <input type="number" id="jewelry-level-max" min="0" step="1">
+      </label>
+    </div>
+
     <form id="add-jewel-form" class="panel hidden">
       <h3>Nouveau bijou</h3>
       <label>Nom du bijou
@@ -244,6 +254,16 @@
         <button id="sculpto-refresh-btn" class="secondary-btn" title="Recharger les données depuis le serveur (pour voir les changements faits sur un autre PC)">🔄 Actualiser</button>
         <button id="show-add-sculpto-btn" class="primary-btn">+ Nouvel objet</button>
       </div>
+    </div>
+
+    <div class="last-window-bar">
+      <span class="last-window-label">🪟 Dernière fenêtre testée :</span>
+      <label>Niveau min
+        <input type="number" id="sculpto-level-min" min="0" step="1">
+      </label>
+      <label>Niveau max
+        <input type="number" id="sculpto-level-max" min="0" step="1">
+      </label>
     </div>
 
     <form id="add-sculpto-form" class="panel hidden">
@@ -423,6 +443,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20260929"></script>
+<script src="app.js?v=20260929b"></script>
 </body>
 </html>
