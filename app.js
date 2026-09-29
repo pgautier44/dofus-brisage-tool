@@ -125,10 +125,12 @@ const state = {
   openJewelDetailId: null,
   jewelrySearchQuery: '',
   jewelryFoldNonProfitable: true,
+  jewelryFoldArchived: true,
   sculptoSort: { column: 'avgRatio', direction: 'desc' },
   openSculptoDetailId: null,
   sculptoSearchQuery: '',
   sculptoFoldNonProfitable: true,
+  sculptoFoldArchived: true,
   brisageSort: { column: 'name', direction: 'asc' },
   brisageSearchQuery: '',
 };
@@ -1242,7 +1244,18 @@ function createFlipPage(cfg) {
       'clickable-row',
       isOpportunity ? 'jewel-row-opportunity' : '',
       cfg.showCraftTooExpensive && item.craftTooExpensive ? 'jewel-row-craft-expensive' : '',
+      item.archived ? 'jewel-row-archived' : '',
     ].filter(Boolean).join(' ');
+    const actionsHtml = item.archived
+      ? `
+        <button type="button" class="unarchive-item-btn" data-id="${item.id}">Désarchiver</button>
+        <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
+      `
+      : `
+        <button type="button" class="add-sale-btn primary-btn" data-id="${item.id}">+ Nouvel achat</button>
+        <button type="button" class="archive-item-btn" data-id="${item.id}">Archiver</button>
+        <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
+      `;
     return `
       <tr data-item-id="${item.id}" class="${rowCls}">
         <td>
@@ -1258,10 +1271,7 @@ function createFlipPage(cfg) {
           <div class="ratio-note">${stats.avgRatio !== null ? ratioLabel + " du prix d'achat" : ''}</div>
         </td>
         ${craftTooExpensiveCell}
-        <td class="row-actions">
-          <button type="button" class="add-sale-btn primary-btn" data-id="${item.id}">+ Nouvel achat</button>
-          <button type="button" class="delete-item-btn" data-id="${item.id}">Supprimer</button>
-        </td>
+        <td class="row-actions">${actionsHtml}</td>
       </tr>
       ${buildDetailRowHtml(item)}
     `;
@@ -1278,9 +1288,12 @@ function createFlipPage(cfg) {
         : `Aucun ${cfg.itemNoun} pour le moment. Ajoute-en un avec "${cfg.addButtonLabel}".`;
       tbody.innerHTML = `<tr><td colspan="${cfg.mainColspan || 7}" class="empty-state">${message}</td></tr>`;
     } else {
-      const profitableRows = rows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls !== 'pas-rentable');
-      const nonProfitableRows = rows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls === 'pas-rentable');
+      const archivedRows = rows.filter(({ item }) => item.archived);
+      const activeRows = rows.filter(({ item }) => !item.archived);
+      const profitableRows = activeRows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls !== 'pas-rentable');
+      const nonProfitableRows = activeRows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls === 'pas-rentable');
       const folded = state[cfg.foldKey];
+      const archiveFolded = state[cfg.archiveFoldKey];
 
       let html = profitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
 
@@ -1298,6 +1311,20 @@ function createFlipPage(cfg) {
         }
       }
 
+      if (archivedRows.length > 0) {
+        html += `
+          <tr class="fold-toggle-row" data-archive-fold-toggle="1">
+            <td colspan="${cfg.mainColspan || 7}">
+              <span class="expand-arrow">${archiveFolded ? '▶' : '▼'}</span>
+              🗄️ ${cfg.itemNounPluralCap} archivés (${archivedRows.length})
+            </td>
+          </tr>
+        `;
+        if (!archiveFolded) {
+          html += archivedRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+        }
+      }
+
       tbody.innerHTML = html;
     }
 
@@ -1305,6 +1332,14 @@ function createFlipPage(cfg) {
     if (foldToggleRow) {
       foldToggleRow.addEventListener('click', () => {
         state[cfg.foldKey] = !state[cfg.foldKey];
+        renderTable();
+      });
+    }
+
+    const archiveFoldToggleRow = tbody.querySelector('[data-archive-fold-toggle]');
+    if (archiveFoldToggleRow) {
+      archiveFoldToggleRow.addEventListener('click', () => {
+        state[cfg.archiveFoldKey] = !state[cfg.archiveFoldKey];
         renderTable();
       });
     }
@@ -1357,6 +1392,24 @@ function createFlipPage(cfg) {
         const item = items().find((i) => i.id === e.target.dataset.id);
         if (!item) return;
         item.craftTooExpensive = e.target.checked;
+        saveData();
+        renderTable();
+      });
+    });
+    tbody.querySelectorAll('.archive-item-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const item = items().find((i) => i.id === e.target.dataset.id);
+        if (!item) return;
+        item.archived = true;
+        saveData();
+        renderTable();
+      });
+    });
+    tbody.querySelectorAll('.unarchive-item-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const item = items().find((i) => i.id === e.target.dataset.id);
+        if (!item) return;
+        item.archived = false;
         saveData();
         renderTable();
       });
@@ -1569,6 +1622,7 @@ const jewelryPage = createFlipPage({
   searchKey: 'jewelrySearchQuery',
   openDetailKey: 'openJewelDetailId',
   foldKey: 'jewelryFoldNonProfitable',
+  archiveFoldKey: 'jewelryFoldArchived',
   tableId: 'jewelry-table',
   tableBodyId: 'jewelry-table-body',
   addItemFormId: 'add-jewel-form',
@@ -1596,6 +1650,7 @@ const sculptoPage = createFlipPage({
   searchKey: 'sculptoSearchQuery',
   openDetailKey: 'openSculptoDetailId',
   foldKey: 'sculptoFoldNonProfitable',
+  archiveFoldKey: 'sculptoFoldArchived',
   tableId: 'sculpto-table',
   tableBodyId: 'sculpto-table-body',
   addItemFormId: 'add-sculpto-form',

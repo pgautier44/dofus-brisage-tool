@@ -265,6 +265,10 @@ tr.jewel-row-opportunity:hover { background: #d7efce; }
 tr.jewel-row-craft-expensive { background: #fdecec; }
 tr.jewel-row-craft-expensive:hover { background: #fbdada; }
 
+tr.jewel-row-archived { background: var(--panel-2); color: var(--text-dim); }
+tr.jewel-row-archived:hover { background: var(--row-hover); }
+tr.jewel-row-archived .badge { opacity: 0.6; }
+
 .badge {
   display: inline-block;
   padding: 4px 10px;
