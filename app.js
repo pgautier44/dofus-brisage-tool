@@ -32,6 +32,8 @@ async function loadData() {
 
   const d = data.data || {};
   return {
+    // runeTypes/runeCategories: the "Types de runes" page that used these was removed,
+    // but keep reading them back so a save doesn't erase that leftover data.
     runeTypes: d.runeTypes || [],
     runeCategories: d.runeCategories || [],
     // items/attempts: the "Rune Pa" page that used these was removed, but keep reading
@@ -111,12 +113,11 @@ function showAlert(message) {
   return showModal({ message, confirmLabel: 'OK', cancelLabel: null });
 }
 
-const RUNE_CATEGORY_PALETTE = ['#c9720f', '#2f9e44', '#1971c2', '#9c36b5', '#e8590c', '#0c8599', '#e03131', '#5c940d'];
-
 const state = {
-  // items/attempts (Rune Pa) and sculptorItems/sculptorAttempts/forgeronItems/forgeronAttempts
-  // are kept here (even though those pages were removed) so a save never strips that data
-  // out of the shared Supabase row — loadData() still reads them back in on every load.
+  // runeTypes/runeCategories (Types de runes), items/attempts (Rune Pa), and
+  // sculptorItems/sculptorAttempts/forgeronItems/forgeronAttempts are kept here (even
+  // though those pages were removed) so a save never strips that data out of the
+  // shared Supabase row — loadData() still reads them back in on every load.
   data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null } },
   jewelrySort: { column: 'avgRatio', direction: 'desc' },
   openJewelDetailId: null,
@@ -150,229 +151,6 @@ function formatPercent(n, decimals = 1) {
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
   return n.toFixed(decimals) + ' %';
 }
-
-// ---------- Rune types ----------
-
-function runeTypeRowHtml(rt) {
-  return `
-    <div class="rune-type-row" draggable="true" data-id="${rt.id}">
-      <span class="drag-handle" title="Glisser pour réordonner / changer de catégorie">⠿</span>
-      <span class="rt-name">${escapeHtml(rt.name)}</span>
-      <label class="rt-price-field">Prix
-        <input type="number" min="0" step="1" value="${rt.price}" class="rt-price-input" data-id="${rt.id}">
-      </label>
-      <label class="rt-price-field" title="Prix de vente combiné par lot de 3 (laisser vide si non utilisé)">x3
-        <input type="number" min="0" step="1" value="${rt.x3Price ?? ''}" class="rt-x3-input" data-id="${rt.id}" placeholder="—">
-      </label>
-      <label class="rt-price-field" title="Prix de vente combiné par lot de 9 (laisser vide si non utilisé)">x9
-        <input type="number" min="0" step="1" value="${rt.x9Price ?? ''}" class="rt-x9-input" data-id="${rt.id}" placeholder="—">
-      </label>
-      <button type="button" class="remove-rt-btn" data-id="${rt.id}">Supprimer</button>
-    </div>
-  `;
-}
-
-function runeCategoryGroups() {
-  const categories = state.data.runeCategories;
-  const groups = categories.map((cat) => ({
-    id: cat.id,
-    name: cat.name,
-    color: cat.color,
-    runes: state.data.runeTypes.filter((rt) => rt.categoryId === cat.id),
-  }));
-  const uncategorized = state.data.runeTypes.filter(
-    (rt) => !rt.categoryId || !categories.some((c) => c.id === rt.categoryId)
-  );
-  if (uncategorized.length > 0 || categories.length === 0) {
-    groups.push({ id: null, name: 'Sans catégorie', color: null, runes: uncategorized });
-  }
-  return groups;
-}
-
-function renderRuneTypes() {
-  const container = document.getElementById('rune-types-list');
-  if (state.data.runeTypes.length === 0 && state.data.runeCategories.length === 0) {
-    container.innerHTML = '<p class="empty-state">Aucun type de rune. Ajoute-en un ci-dessous.</p>';
-    return;
-  }
-
-  container.innerHTML = runeCategoryGroups().map((g) => {
-    const deleteBtn = g.id
-      ? `<button type="button" class="remove-category-btn" data-id="${g.id}" title="Supprimer la catégorie (les runes repassent en 'Sans catégorie')">✕</button>`
-      : '';
-    const rowsHtml = g.runes.length === 0
-      ? '<p class="empty-state small">Glisse une rune ici</p>'
-      : g.runes.map(runeTypeRowHtml).join('');
-    return `
-      <div class="rune-category-group" data-category-id="${g.id || ''}" style="--cat-color:${g.color || 'var(--no-data)'}">
-        <div class="rune-category-header">
-          <span class="cat-dot"></span>
-          <span class="cat-name">${escapeHtml(g.name)}</span>
-          ${deleteBtn}
-        </div>
-        <div class="rune-category-rows">${rowsHtml}</div>
-      </div>
-    `;
-  }).join('');
-
-  let draggedId = null;
-
-  function moveRuneToCategory(targetCategoryId, insertBeforeId) {
-    const arr = state.data.runeTypes;
-    const fromIndex = arr.findIndex((r) => r.id === draggedId);
-    if (fromIndex === -1) return;
-    const [moved] = arr.splice(fromIndex, 1);
-    moved.categoryId = targetCategoryId || null;
-
-    if (insertBeforeId) {
-      const idx = arr.findIndex((r) => r.id === insertBeforeId);
-      arr.splice(idx, 0, moved);
-    } else {
-      let lastIdx = -1;
-      arr.forEach((r, i) => { if (r.categoryId === (targetCategoryId || null)) lastIdx = i; });
-      arr.splice(lastIdx + 1, 0, moved);
-    }
-
-    saveData();
-    render();
-  }
-
-  container.querySelectorAll('.rune-type-row').forEach((row) => {
-    row.addEventListener('dragstart', (e) => {
-      draggedId = row.dataset.id;
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    row.addEventListener('dragend', () => {
-      container.querySelectorAll('.rune-type-row').forEach((r) => r.classList.remove('dragging', 'drag-over'));
-      container.querySelectorAll('.rune-category-group').forEach((g) => g.classList.remove('drag-over-group'));
-    });
-    row.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      if (row.dataset.id === draggedId) return;
-      row.classList.add('drag-over');
-    });
-    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-    row.addEventListener('drop', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      row.classList.remove('drag-over');
-      const targetId = row.dataset.id;
-      if (!draggedId || draggedId === targetId) return;
-
-      const targetCategoryId = row.closest('.rune-category-group').dataset.categoryId || null;
-      const dropBeforeTarget = e.clientY < row.getBoundingClientRect().top + row.offsetHeight / 2;
-      moveRuneToCategory(targetCategoryId, dropBeforeTarget ? targetId : null);
-    });
-  });
-
-  container.querySelectorAll('.rune-category-group').forEach((group) => {
-    group.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      if (!e.target.closest('.rune-type-row')) group.classList.add('drag-over-group');
-    });
-    group.addEventListener('dragleave', (e) => {
-      if (!group.contains(e.relatedTarget)) group.classList.remove('drag-over-group');
-    });
-    group.addEventListener('drop', (e) => {
-      e.preventDefault();
-      group.classList.remove('drag-over-group');
-      if (e.target.closest('.rune-type-row')) return; // handled by the row's own drop listener
-      if (!draggedId) return;
-      moveRuneToCategory(group.dataset.categoryId || null, null);
-    });
-  });
-
-  container.querySelectorAll('.rt-price-input').forEach((input) => {
-    input.addEventListener('change', (e) => {
-      const rt = state.data.runeTypes.find((r) => r.id === e.target.dataset.id);
-      if (rt) {
-        rt.price = Number(e.target.value) || 0;
-        saveData();
-        render();
-      }
-    });
-  });
-
-  function bindComboInput(selector, field) {
-    container.querySelectorAll(selector).forEach((input) => {
-      input.addEventListener('change', (e) => {
-        const rt = state.data.runeTypes.find((r) => r.id === e.target.dataset.id);
-        if (!rt) return;
-        const raw = e.target.value;
-        rt[field] = raw === '' ? null : Number(raw) || 0;
-        saveData();
-        render();
-      });
-    });
-  }
-  bindComboInput('.rt-x3-input', 'x3Price');
-  bindComboInput('.rt-x9-input', 'x9Price');
-
-  container.querySelectorAll('.remove-rt-btn').forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
-      const id = e.target.dataset.id;
-      const usedInAttempt = state.data.attempts.some((a) => a.runes.some((r) => r.typeId === id));
-      if (usedInAttempt) {
-        const ok = await showConfirm(
-          "Cette rune est utilisée dans des essais existants. La supprimer du catalogue ne modifie pas l'historique. Continuer ?",
-          { danger: true }
-        );
-        if (!ok) return;
-      }
-      state.data.runeTypes = state.data.runeTypes.filter((r) => r.id !== id);
-      saveData();
-      render();
-    });
-  });
-
-  container.querySelectorAll('.remove-category-btn').forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
-      const id = e.target.dataset.id;
-      const cat = state.data.runeCategories.find((c) => c.id === id);
-      const ok = await showConfirm(`Supprimer la catégorie "${cat.name}" ? Ses runes repasseront en "Sans catégorie".`, { danger: true });
-      if (!ok) return;
-      state.data.runeTypes.forEach((rt) => { if (rt.categoryId === id) rt.categoryId = null; });
-      state.data.runeCategories = state.data.runeCategories.filter((c) => c.id !== id);
-      saveData();
-      render();
-    });
-  });
-
-  const categorySelect = document.getElementById('rune-type-category');
-  const previousValue = categorySelect.value;
-  categorySelect.innerHTML = [
-    '<option value="">Sans catégorie</option>',
-    ...state.data.runeCategories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`),
-  ].join('');
-  if ([...categorySelect.options].some((o) => o.value === previousValue)) {
-    categorySelect.value = previousValue;
-  }
-}
-
-document.getElementById('rune-type-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = document.getElementById('rune-type-name').value.trim();
-  const price = Number(document.getElementById('rune-type-price').value);
-  const categoryId = document.getElementById('rune-type-category').value || null;
-  if (!name) return;
-  state.data.runeTypes.push({ id: uid(), name, price: price || 0, categoryId });
-  saveData();
-  document.getElementById('rune-type-name').value = '';
-  document.getElementById('rune-type-price').value = '';
-  render();
-});
-
-document.getElementById('rune-category-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = document.getElementById('rune-category-name').value.trim();
-  if (!name) return;
-  const color = RUNE_CATEGORY_PALETTE[state.data.runeCategories.length % RUNE_CATEGORY_PALETTE.length];
-  state.data.runeCategories.push({ id: uid(), name, color });
-  saveData();
-  e.target.reset();
-  render();
-});
 
 // ---------- Tabs ----------
 
@@ -1254,7 +1032,6 @@ function escapeHtml(str) {
 }
 
 function render() {
-  renderRuneTypes();
   closeInlineForms();
   jewelryPage.renderTable();
   sculptoPage.renderTable();

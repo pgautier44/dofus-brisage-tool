@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20261001a">
+<link rel="stylesheet" href="style.css?v=20261001b">
 </head>
 <body class="loading">
 <header>
@@ -19,7 +19,6 @@
     <button type="button" class="tab-btn" data-tab="brisage" role="tab" aria-selected="false">Brisage</button>
     <button type="button" class="tab-btn" data-tab="jewelry" role="tab" aria-selected="false">Bijoutier/Joaillo</button>
     <button type="button" class="tab-btn" data-tab="sculpto" role="tab" aria-selected="false">Sculpteur/Sculto</button>
-    <button type="button" class="tab-btn" data-tab="runes" role="tab" aria-selected="false">Types de runes</button>
   </div>
 
   <section class="card legacy-banner hidden" id="legacy-import-banner">
@@ -29,26 +28,6 @@
       <button type="button" id="import-legacy-btn" class="primary-btn">Importer ces données</button>
       <button type="button" id="dismiss-legacy-btn" class="cancel-btn">Ignorer</button>
     </div>
-  </section>
-
-  <section class="card hidden" id="rune-types-section" data-tab-panel="runes">
-    <h2>Types de runes</h2>
-    <p class="hint">Ajoute ici chaque type de rune que tu peux obtenir en brisant (PA, PM, Vitalité, ...) avec son prix actuel à l'hôtel de vente. Renseigne aussi les prix x3/x9 si tu vends les runes combinées : la valeur des runes obtenues sur un essai les utilisera automatiquement quand c'est plus avantageux. Glisse une rune sur une catégorie pour la ranger dedans (et réordonner).</p>
-    <div id="rune-types-list"></div>
-    <form id="rune-type-form" class="inline-form">
-      <input type="text" id="rune-type-name" placeholder="Nom de la rune (ex: Rune Pa)" required>
-      <input type="number" id="rune-type-price" placeholder="Prix unitaire (kamas)" min="0" step="1" required>
-      <select id="rune-type-category"></select>
-      <button type="submit">Ajouter une rune</button>
-    </form>
-
-    <h3>Catégories</h3>
-    <p class="hint">Ex : Rune de base, Rune Point, Rune Res, Rune Dommage... Les runes sans catégorie restent dans "Sans catégorie".</p>
-    <form id="rune-category-form" class="inline-form">
-      <input type="text" id="rune-category-name" placeholder="Nom de la catégorie" required>
-      <button type="submit">Ajouter une catégorie</button>
-    </form>
-
   </section>
 
   <section class="card" id="runetrans-section" data-tab-panel="runetrans">
@@ -435,6 +414,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20261001a"></script>
+<script src="app.js?v=20261001b"></script>
 </body>
 </html>

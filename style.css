@@ -307,26 +307,6 @@ tr.jewel-row-archived .badge { opacity: 0.6; }
 .fold-toggle-row:hover { background: var(--row-hover) !important; }
 .fold-toggle-row td { white-space: normal; }
 
-.rune-type-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-}
-.rune-type-row .rt-name { flex: 1; min-width: 100px; font-weight: 600; }
-.rune-type-row .remove-rt-btn { color: var(--pas-rentable); background: transparent; border: none; }
-
-.rt-price-field {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  color: var(--text-dim);
-}
-.rt-price-field input[type="number"] { width: 90px; }
-
 .last-window-bar {
   display: flex;
   align-items: center;
@@ -359,99 +339,6 @@ input.brisage-name-input { width: 180px; }
 .brisage-checkbox-cell { text-align: center; }
 tr.brisage-row-not-profitable { background: #fdecec; }
 tr.brisage-row-not-profitable:hover { background: #fbdada; }
-
-.drag-handle {
-  cursor: grab;
-  color: var(--text-dim);
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0 2px;
-  user-select: none;
-}
-.drag-handle:hover { color: var(--accent); }
-
-.rune-type-row.dragging { opacity: 0.4; }
-.rune-type-row.drag-over { border-top: 2px solid var(--accent); }
-
-.rune-category-group {
-  border-left: 4px solid var(--cat-color, var(--no-data));
-  padding-left: 12px;
-  margin-bottom: 18px;
-}
-.rune-category-group.drag-over-group { background: var(--row-hover); }
-.rune-category-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-.cat-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--cat-color, var(--no-data));
-  flex-shrink: 0;
-}
-.remove-category-btn {
-  margin-left: auto;
-  background: transparent;
-  border: none;
-  color: var(--pas-rentable);
-  font-weight: bold;
-  padding: 2px 6px;
-}
-.rune-category-rows .rune-type-row:last-child { border-bottom: none; }
-.empty-state.small { padding: 6px 0; font-size: 0.85rem; }
-
-.rune-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.rune-row input { width: 130px; }
-.remove-rune-row-btn { background: transparent; border: none; color: var(--pas-rentable); font-weight: bold; }
-
-.rune-combo {
-  position: relative;
-  flex: 1;
-  min-width: 180px;
-}
-.rune-type-search { width: 100%; }
-.rune-type-options {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  max-height: 260px;
-  overflow-y: auto;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(43, 36, 24, 0.2);
-  z-index: 20;
-  padding: 4px 0;
-}
-.rune-option-group-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px 2px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text-dim);
-  text-transform: uppercase;
-}
-.rune-option-group-label .cat-dot { width: 8px; height: 8px; }
-.rune-option {
-  padding: 7px 12px;
-  cursor: pointer;
-  font-size: 0.92rem;
-}
-.rune-option:hover, .rune-option.highlighted { background: var(--row-hover); }
-.rune-type-options .empty-state { padding: 10px 12px; text-align: left; }
 
 .detail-panel {
   border: 1px solid var(--border);
