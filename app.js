@@ -27,7 +27,7 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null } };
+    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null } };
   }
 
   const d = data.data || {};
@@ -53,9 +53,12 @@ async function loadData() {
     brisageItems: d.brisageItems || [],
     runeTransItems: d.runeTransItems || [],
     runeTransSales: d.runeTransSales || [],
+    tailleurItems: d.tailleurItems || [],
+    tailleurSales: d.tailleurSales || [],
     jewelryLastWindow: d.jewelryLastWindow || { min: null, max: null },
     sculptoLastWindow: d.sculptoLastWindow || { min: null, max: null },
     runeTransLastWindow: d.runeTransLastWindow || { min: null, max: null },
+    tailleurLastWindow: d.tailleurLastWindow || { min: null, max: null },
   };
 }
 
@@ -118,7 +121,7 @@ const state = {
   // sculptorItems/sculptorAttempts/forgeronItems/forgeronAttempts are kept here (even
   // though those pages were removed) so a save never strips that data out of the
   // shared Supabase row — loadData() still reads them back in on every load.
-  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null } },
+  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null } },
   jewelrySort: { column: 'avgRatio', direction: 'desc' },
   openJewelDetailId: null,
   jewelrySearchQuery: '',
@@ -134,6 +137,11 @@ const state = {
   runeTransSearchQuery: '',
   runeTransFoldNonProfitable: true,
   runeTransFoldArchived: true,
+  tailleurSort: { column: 'avgRatio', direction: 'desc' },
+  openTailleurDetailId: null,
+  tailleurSearchQuery: '',
+  tailleurFoldNonProfitable: true,
+  tailleurFoldArchived: true,
   brisageSort: { column: 'name', direction: 'asc' },
   brisageSearchQuery: '',
 };
@@ -840,6 +848,37 @@ const runeTransPage = createFlipPage({
   levelMaxInputId: 'runetrans-level-max',
 });
 
+const tailleurPage = createFlipPage({
+  itemsKey: 'tailleurItems',
+  salesKey: 'tailleurSales',
+  sortKey: 'tailleurSort',
+  searchKey: 'tailleurSearchQuery',
+  openDetailKey: 'openTailleurDetailId',
+  foldKey: 'tailleurFoldNonProfitable',
+  archiveFoldKey: 'tailleurFoldArchived',
+  tableId: 'tailleur-table',
+  tableBodyId: 'tailleur-table-body',
+  addItemFormId: 'add-tailleur-form',
+  itemNameInputId: 'tailleur-name',
+  itemPriceInputId: 'tailleur-purchase-price',
+  showAddItemBtnId: 'show-add-tailleur-btn',
+  searchInputId: 'tailleur-search',
+  refreshBtnId: 'tailleur-refresh-btn',
+  entryTemplateId: 'tailleur-entry-template',
+  editTemplateId: 'edit-tailleur-template',
+  totalInvestedElId: 'tailleur-total-invested',
+  totalCollectedElId: 'tailleur-total-collected',
+  totalNetElId: 'tailleur-total-net',
+  itemNoun: 'objet',
+  itemNounPluralCap: 'Objets',
+  addButtonLabel: '+ Nouvel objet',
+  showCraftTooExpensive: true,
+  mainColspan: 8,
+  lastWindowKey: 'tailleurLastWindow',
+  levelMinInputId: 'tailleur-level-min',
+  levelMaxInputId: 'tailleur-level-max',
+});
+
 // ---------- Brisage (simple, manually-entered items — no essai tracking) ----------
 
 document.getElementById('show-add-brisage-btn').addEventListener('click', () => {
@@ -1036,6 +1075,7 @@ function render() {
   jewelryPage.renderTable();
   sculptoPage.renderTable();
   runeTransPage.renderTable();
+  tailleurPage.renderTable();
   renderBrisageTable();
 }
 
