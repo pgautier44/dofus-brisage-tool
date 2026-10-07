@@ -272,7 +272,15 @@ function createFlipPage(cfg) {
     let avgRatio = null;
 
     if (count > 0) {
-      avgPurchasePrice = itemSales.reduce((s, e) => s + e.purchasePrice, 0) / count;
+      if (cfg.showQuantity) {
+        // Chaque achat est une série de plusieurs unités (quantité + prix total) : le
+        // "prix d'achat" affiché est donc le prix unitaire moyen, pondéré par quantité.
+        const totalQty = itemSales.reduce((s, e) => s + (e.quantity || 1), 0);
+        const totalCost = itemSales.reduce((s, e) => s + e.purchasePrice, 0);
+        avgPurchasePrice = totalQty > 0 ? totalCost / totalQty : null;
+      } else {
+        avgPurchasePrice = itemSales.reduce((s, e) => s + e.purchasePrice, 0) / count;
+      }
     }
     if (soldCount > 0) {
       const totalPurchase = soldSales.reduce((s, e) => s + e.purchasePrice, 0);
@@ -327,7 +335,11 @@ function createFlipPage(cfg) {
     if (!name) return;
     const itemId = uid();
     items().push({ id: itemId, name });
-    sales().push({ id: uid(), jewelId: itemId, purchasePrice, listedDate, salePrice: null, saleDate: null });
+    const sale = { id: uid(), jewelId: itemId, purchasePrice, listedDate, salePrice: null, saleDate: null };
+    if (cfg.showQuantity) {
+      sale.quantity = Number(document.getElementById(cfg.quantityInputId).value) || 1;
+    }
+    sales().push(sale);
     saveData();
     e.target.reset();
     document.getElementById(cfg.addItemFormId).classList.add('hidden');
@@ -597,6 +609,8 @@ function createFlipPage(cfg) {
 
     if (prefillSale) {
       form.querySelector('.jewel-purchase-price').value = prefillSale.purchasePrice;
+      const qtyInput = form.querySelector('.jewel-quantity');
+      if (qtyInput) qtyInput.value = prefillSale.quantity ?? 1;
       if (prefillSale.salePrice !== null && prefillSale.salePrice !== undefined) {
         form.querySelector('.jewel-sale-price').value = prefillSale.salePrice;
       }
@@ -615,7 +629,10 @@ function createFlipPage(cfg) {
     const salePriceRaw = form.querySelector('.jewel-sale-price').value;
     const salePrice = salePriceRaw === '' ? null : Number(salePriceRaw);
     const saleDate = salePrice === null ? null : (existingSale && existingSale.saleDate) || todayISODate();
-    return { purchasePrice, listedDate, salePrice, saleDate };
+    const result = { purchasePrice, listedDate, salePrice, saleDate };
+    const qtyInput = form.querySelector('.jewel-quantity');
+    if (qtyInput) result.quantity = Number(qtyInput.value) || 1;
+    return result;
   }
 
   function openAddSaleForm(itemId) {
@@ -700,9 +717,10 @@ function createFlipPage(cfg) {
     if (state[cfg.openDetailKey] !== item.id) return '';
 
     const itemSales = getSalesForItem(item.id).slice().sort((a, b) => new Date(b.listedDate) - new Date(a.listedDate));
+    const detailColCount = cfg.showQuantity ? 10 : 8;
 
     const rowsHtml = itemSales.length === 0
-      ? '<tr><td colspan="8" class="empty-state">Aucun achat enregistré</td></tr>'
+      ? `<tr><td colspan="${detailColCount}" class="empty-state">Aucun achat enregistré</td></tr>`
       : itemSales.map((s) => {
         const sold = saleIsSold(s);
         const gain = saleGain(s);
@@ -712,10 +730,14 @@ function createFlipPage(cfg) {
         const statusBadge = sold
           ? '<span class="badge rentable">Vendu</span>'
           : '<span class="badge no-data">En vente</span>';
+        const quantityCells = cfg.showQuantity
+          ? `<td>${s.quantity ?? 1}</td><td>${formatKamas(s.purchasePrice / (s.quantity || 1))}</td>`
+          : '';
         return `
           <tr data-sale-id="${s.id}">
             <td>${new Date(s.listedDate).toLocaleDateString('fr-FR')}</td>
             <td>${formatKamas(s.purchasePrice)}</td>
+            ${quantityCells}
             <td>${statusBadge}</td>
             <td>${s.saleDate ? new Date(s.saleDate).toLocaleDateString('fr-FR') : '—'}</td>
             <td>${sold ? formatKamas(s.salePrice) : '—'}</td>
@@ -729,6 +751,8 @@ function createFlipPage(cfg) {
         `;
       }).join('');
 
+    const quantityHeaders = cfg.showQuantity ? '<th>Quantité</th><th>Prix unitaire</th>' : '';
+
     return `
       <tr class="detail-row">
         <td colspan="${cfg.mainColspan || 7}">
@@ -736,7 +760,7 @@ function createFlipPage(cfg) {
             <h3>Historique — ${escapeHtml(item.name)}</h3>
             <table class="attempts-table jewel-sales-table">
               <thead>
-                <tr><th>Mise en vente</th><th>Prix d'achat</th><th>Statut</th><th>Date de vente</th><th>Prix de vente</th><th>Délai</th><th>Gain</th><th class="actions-col"></th></tr>
+                <tr><th>Mise en vente</th><th>Prix d'achat${cfg.showQuantity ? ' total' : ''}</th>${quantityHeaders}<th>Statut</th><th>Date de vente</th><th>Prix de vente</th><th>Délai</th><th>Gain</th><th class="actions-col"></th></tr>
               </thead>
               <tbody>${rowsHtml}</tbody>
             </table>
@@ -908,6 +932,8 @@ const alchimistePage = createFlipPage({
   addItemFormId: 'add-alchimiste-form',
   itemNameInputId: 'alchimiste-name',
   itemPriceInputId: 'alchimiste-purchase-price',
+  showQuantity: true,
+  quantityInputId: 'alchimiste-quantity',
   showAddItemBtnId: 'show-add-alchimiste-btn',
   searchInputId: 'alchimiste-search',
   refreshBtnId: 'alchimiste-refresh-btn',

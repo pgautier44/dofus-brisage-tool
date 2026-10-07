@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20261007a">
+<link rel="stylesheet" href="style.css?v=20261007b">
 </head>
 <body class="loading">
 <header>
@@ -414,7 +414,10 @@
       <label>Nom de l'objet
         <input type="text" id="alchimiste-name" required>
       </label>
-      <label>Prix d'achat (kamas)
+      <label>Quantité
+        <input type="number" id="alchimiste-quantity" min="1" step="1" value="1" required>
+      </label>
+      <label>Prix total d'achat (kamas)
         <input type="number" id="alchimiste-purchase-price" min="0" step="1" required>
       </label>
       <div class="form-actions">
@@ -430,7 +433,7 @@
         <thead>
           <tr>
             <th data-sort="name">Objet</th>
-            <th data-sort="avgPurchasePrice">Prix d'achat (moy.)</th>
+            <th data-sort="avgPurchasePrice">Prix unitaire (moy.)</th>
             <th data-sort="count">Nb itérations</th>
             <th data-sort="avgDelay">Délai moyen</th>
             <th data-sort="totalGain">Gain</th>
@@ -662,10 +665,13 @@
 <template id="alchimiste-entry-template">
   <form class="panel jewel-entry-form">
     <h3><span class="jewel-entry-form-title">Nouvel achat</span> — <span class="jewel-name-label"></span></h3>
-    <label>Prix d'achat (kamas)
+    <label>Quantité
+      <input type="number" class="jewel-quantity" min="1" step="1" value="1" required>
+    </label>
+    <label>Prix total d'achat (kamas)
       <input type="number" class="jewel-purchase-price" min="0" step="1" required>
     </label>
-    <label>Prix de vente (kamas) — laisse vide tant que non vendu
+    <label>Prix de vente de la série (kamas) — laisse vide tant que non vendu
       <input type="number" class="jewel-sale-price" min="0" step="1">
     </label>
     <div class="form-actions">
@@ -729,6 +735,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20261007a"></script>
+<script src="app.js?v=20261007b"></script>
 </body>
 </html>
