@@ -27,7 +27,7 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], alchimisteItems: [], alchimisteSales: [], faconneurItems: [], faconneurSales: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null }, alchimisteLastWindow: { min: null, max: null }, faconneurLastWindow: { min: null, max: null } };
+    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], alchimisteItems: [], alchimisteSales: [], faconneurItems: [], faconneurSales: [], deletedIds: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null }, alchimisteLastWindow: { min: null, max: null }, faconneurLastWindow: { min: null, max: null } };
   }
 
   const d = data.data || {};
@@ -59,6 +59,10 @@ async function loadData() {
     alchimisteSales: d.alchimisteSales || [],
     faconneurItems: d.faconneurItems || [],
     faconneurSales: d.faconneurSales || [],
+    // deletedIds: tombstones for deleted items/sales, so that a save from a browser tab
+    // that is still holding a stale (pre-deletion) copy never resurrects them — see
+    // mergeStateForSave().
+    deletedIds: d.deletedIds || [],
     jewelryLastWindow: d.jewelryLastWindow || { min: null, max: null },
     sculptoLastWindow: d.sculptoLastWindow || { min: null, max: null },
     runeTransLastWindow: d.runeTransLastWindow || { min: null, max: null },
@@ -68,7 +72,63 @@ async function loadData() {
   };
 }
 
-async function saveData() {
+// Chaque sauvegarde envoie TOUT state.data d'un coup (la ligne Supabase est un blob JSON
+// unique). Si on écrivait bêtement state.data tel quel, un onglet resté ouvert avec des
+// données périmées (un autre onglet/appareil ayant ajouté des choses depuis) écraserait
+// silencieusement ces ajouts à la prochaine sauvegarde — c'est la cause d'une grosse perte
+// de données constatée le 2026-10-08. mergeStateForSave() fusionne donc toujours avec la
+// version la plus fraîche du serveur juste avant d'écrire : pour chaque tableau (objets,
+// achats...), on garde tout ce qui existe des deux côtés (par id), sauf les ids marqués
+// supprimés dans deletedIds (sinon une suppression ne "tiendrait" jamais face à un onglet
+// périmé qui a encore l'élément).
+function mergeStateForSave(localData, remoteData) {
+  const remote = remoteData || {};
+  const deletedIds = new Set([...(localData.deletedIds || []), ...(remote.deletedIds || [])]);
+
+  const merged = {};
+  const keys = new Set([...Object.keys(localData), ...Object.keys(remote)]);
+  keys.forEach((key) => {
+    if (key === 'deletedIds') return;
+    const localVal = localData[key];
+    const remoteVal = remote[key];
+    if (Array.isArray(localVal) && Array.isArray(remoteVal)) {
+      merged[key] = mergeById(localVal, remoteVal).filter((x) => !x.id || !deletedIds.has(x.id));
+    } else if (localVal !== undefined) {
+      merged[key] = localVal;
+    } else {
+      merged[key] = remoteVal;
+    }
+  });
+  merged.deletedIds = [...deletedIds];
+  return merged;
+}
+
+// Enregistre qu'un ou plusieurs ids ont été supprimés, pour que mergeStateForSave() ne
+// les ramène jamais depuis un onglet périmé. À appeler AVANT de retirer l'élément de son
+// tableau.
+function markDeleted(ids) {
+  if (!state.data.deletedIds) state.data.deletedIds = [];
+  (Array.isArray(ids) ? ids : [ids]).forEach((id) => {
+    if (id && !state.data.deletedIds.includes(id)) state.data.deletedIds.push(id);
+  });
+}
+
+// Les sauvegardes sont mises en file pour qu'une sauvegarde ne démarre jamais sa fusion
+// avant que la précédente (dans cet onglet) ait fini d'écrire state.data.
+let saveChain = Promise.resolve();
+
+function saveData() {
+  const chain = saveChain.then(doSaveData);
+  saveChain = chain.catch(() => {});
+  return chain;
+}
+
+async function doSaveData() {
+  const { data: remoteRow, error: fetchError } = await fetchRemoteData();
+  if (!fetchError && remoteRow) {
+    state.data = mergeStateForSave(state.data, remoteRow.data);
+  }
+
   const { error } = await supabaseClient
     .from('app_state')
     .update({ data: state.data, updated_at: new Date().toISOString() })
@@ -127,7 +187,7 @@ const state = {
   // sculptorItems/sculptorAttempts/forgeronItems/forgeronAttempts are kept here (even
   // though those pages were removed) so a save never strips that data out of the
   // shared Supabase row — loadData() still reads them back in on every load.
-  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], alchimisteItems: [], alchimisteSales: [], faconneurItems: [], faconneurSales: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null }, alchimisteLastWindow: { min: null, max: null }, faconneurLastWindow: { min: null, max: null } },
+  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], alchimisteItems: [], alchimisteSales: [], faconneurItems: [], faconneurSales: [], deletedIds: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null }, alchimisteLastWindow: { min: null, max: null }, faconneurLastWindow: { min: null, max: null } },
   jewelrySort: { column: 'avgRatio', direction: 'desc' },
   openJewelDetailId: null,
   jewelrySearchQuery: '',
@@ -536,6 +596,7 @@ function createFlipPage(cfg) {
     tbody.querySelectorAll('.delete-jewel-sale-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const id = e.target.dataset.id;
+        markDeleted(id);
         state.data[cfg.salesKey] = sales().filter((s) => s.id !== id);
         saveData();
         render();
@@ -547,6 +608,8 @@ function createFlipPage(cfg) {
         const item = items().find((i) => i.id === id);
         const ok = await showConfirm(`Supprimer "${item.name}" et tous ses achats associés ?`, { danger: true });
         if (!ok) return;
+        const relatedSaleIds = sales().filter((s) => s.jewelId === id).map((s) => s.id);
+        markDeleted([id, ...relatedSaleIds]);
         state.data[cfg.itemsKey] = items().filter((i) => i.id !== id);
         state.data[cfg.salesKey] = sales().filter((s) => s.jewelId !== id);
         if (state[cfg.openDetailKey] === id) state[cfg.openDetailKey] = null;
@@ -1157,6 +1220,7 @@ function renderBrisageTable() {
       const item = state.data.brisageItems.find((it) => it.id === id);
       const ok = await showConfirm(`Supprimer "${item.name}" ?`, { danger: true });
       if (!ok) return;
+      markDeleted(id);
       state.data.brisageItems = state.data.brisageItems.filter((it) => it.id !== id);
       saveData();
       renderBrisageTable();
