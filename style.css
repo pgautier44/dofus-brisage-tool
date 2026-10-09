@@ -134,6 +134,12 @@ button:hover { border-color: var(--accent); }
 }
 .primary-btn:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
 .secondary-btn { background: var(--panel-2); }
+.secondary-btn.active {
+  background: var(--accent);
+  color: #211602;
+  border-color: var(--accent-dark);
+  font-weight: 600;
+}
 .cancel-btn { background: transparent; color: var(--text-dim); }
 
 .hidden { display: none !important; }
@@ -306,6 +312,13 @@ tr.jewel-row-archived .badge { opacity: 0.6; }
 }
 .fold-toggle-row:hover { background: var(--row-hover) !important; }
 .fold-toggle-row td { white-space: normal; }
+
+.opportunity-section-header {
+  background: var(--panel-2) !important;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.opportunity-section-header td { white-space: normal; }
 
 .last-window-bar {
   display: flex;

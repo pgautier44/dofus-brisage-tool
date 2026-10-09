@@ -193,31 +193,37 @@ const state = {
   jewelrySearchQuery: '',
   jewelryFoldNonProfitable: true,
   jewelryFoldArchived: true,
+  jewelryOpportunityFirst: false,
   sculptoSort: { column: 'avgRatio', direction: 'desc' },
   openSculptoDetailId: null,
   sculptoSearchQuery: '',
   sculptoFoldNonProfitable: true,
   sculptoFoldArchived: true,
+  sculptoOpportunityFirst: false,
   runeTransSort: { column: 'avgRatio', direction: 'desc' },
   openRuneTransDetailId: null,
   runeTransSearchQuery: '',
   runeTransFoldNonProfitable: true,
   runeTransFoldArchived: true,
+  runeTransOpportunityFirst: false,
   tailleurSort: { column: 'avgRatio', direction: 'desc' },
   openTailleurDetailId: null,
   tailleurSearchQuery: '',
   tailleurFoldNonProfitable: true,
   tailleurFoldArchived: true,
+  tailleurOpportunityFirst: false,
   alchimisteSort: { column: 'avgRatio', direction: 'desc' },
   openAlchimisteDetailId: null,
   alchimisteSearchQuery: '',
   alchimisteFoldNonProfitable: true,
   alchimisteFoldArchived: true,
+  alchimisteOpportunityFirst: false,
   faconneurSort: { column: 'avgRatio', direction: 'desc' },
   openFaconneurDetailId: null,
   faconneurSearchQuery: '',
   faconneurFoldNonProfitable: true,
   faconneurFoldArchived: true,
+  faconneurOpportunityFirst: false,
   brisageSort: { column: 'name', direction: 'asc' },
   brisageSearchQuery: '',
 };
@@ -295,6 +301,12 @@ function classifyFlipRatio(ratio) {
   if (ratio === null || ratio === undefined) return { label: 'Pas assez de données', cls: 'no-data' };
   if (ratio >= 1) return { label: 'Rentable', cls: 'rentable' };
   return { label: 'Pas rentable', cls: 'pas-rentable' };
+}
+
+// Tout est vendu (rien actuellement en vente) et le rendement est positif : bon candidat
+// pour relancer un achat/craft.
+function isOpportunityStats(stats) {
+  return stats.count > 0 && stats.soldCount === stats.count && stats.avgRatio !== null && stats.avgRatio >= 1;
 }
 
 function createFlipPage(cfg) {
@@ -382,6 +394,15 @@ function createFlipPage(cfg) {
     document.getElementById(cfg.addItemFormId).classList.toggle('hidden');
   });
 
+  if (cfg.opportunityFirstKey) {
+    const opportunitiesBtn = document.getElementById(cfg.opportunityFirstBtnId);
+    opportunitiesBtn.addEventListener('click', () => {
+      state[cfg.opportunityFirstKey] = !state[cfg.opportunityFirstKey];
+      opportunitiesBtn.classList.toggle('active', state[cfg.opportunityFirstKey]);
+      renderTable();
+    });
+  }
+
   document.getElementById(cfg.searchInputId).addEventListener('input', (e) => {
     state[cfg.searchKey] = e.target.value.trim().toLowerCase();
     renderTable();
@@ -457,9 +478,7 @@ function createFlipPage(cfg) {
     const gainCls = stats.totalGain === null ? '' : stats.totalGain >= 0 ? 'gain-positive' : 'gain-negative';
     const gainLabel = stats.totalGain === null ? '—' : (stats.totalGain >= 0 ? '+' : '') + formatKamas(stats.totalGain);
     const delayLabel = stats.avgDelay === null ? '—' : Math.round(stats.avgDelay) + ' j';
-    // Tout est vendu (rien actuellement en vente) et le rendement est positif :
-    // bon candidat pour relancer un achat.
-    const isOpportunity = stats.count > 0 && stats.soldCount === stats.count && stats.avgRatio !== null && stats.avgRatio >= 1;
+    const isOpportunity = isOpportunityStats(stats);
     const opportunityIcon = isOpportunity
       ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
       : '';
@@ -517,12 +536,30 @@ function createFlipPage(cfg) {
     } else {
       const archivedRows = rows.filter(({ item }) => item.archived);
       const activeRows = rows.filter(({ item }) => !item.archived);
-      const profitableRows = activeRows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls !== 'pas-rentable');
+      let profitableRows = activeRows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls !== 'pas-rentable');
       const nonProfitableRows = activeRows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls === 'pas-rentable');
       const folded = state[cfg.foldKey];
       const archiveFolded = state[cfg.archiveFoldKey];
 
-      let html = profitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+      // "À relancer en premier" : fait remonter en tête du tableau les objets rentables
+      // et entièrement vendus (ceux qu'il n'y a plus qu'à racheter/recrafter), avant tout
+      // le reste — y compris ce qui est encore en vente.
+      let opportunityRows = [];
+      if (cfg.opportunityFirstKey && state[cfg.opportunityFirstKey]) {
+        opportunityRows = profitableRows.filter(({ stats }) => isOpportunityStats(stats));
+        profitableRows = profitableRows.filter(({ stats }) => !isOpportunityStats(stats));
+      }
+
+      let html = '';
+      if (opportunityRows.length > 0) {
+        html += `
+          <tr class="opportunity-section-header">
+            <td colspan="${cfg.mainColspan || 7}">🔁 ${cfg.itemNounPluralCap} à relancer — rentables et entièrement vendus (${opportunityRows.length})</td>
+          </tr>
+        `;
+        html += opportunityRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+      }
+      html += profitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
 
       if (nonProfitableRows.length > 0) {
         html += `
@@ -866,6 +903,8 @@ const jewelryPage = createFlipPage({
   openDetailKey: 'openJewelDetailId',
   foldKey: 'jewelryFoldNonProfitable',
   archiveFoldKey: 'jewelryFoldArchived',
+  opportunityFirstKey: 'jewelryOpportunityFirst',
+  opportunityFirstBtnId: 'jewelry-opportunities-btn',
   tableId: 'jewelry-table',
   tableBodyId: 'jewelry-table-body',
   addItemFormId: 'add-jewel-form',
@@ -897,6 +936,8 @@ const sculptoPage = createFlipPage({
   openDetailKey: 'openSculptoDetailId',
   foldKey: 'sculptoFoldNonProfitable',
   archiveFoldKey: 'sculptoFoldArchived',
+  opportunityFirstKey: 'sculptoOpportunityFirst',
+  opportunityFirstBtnId: 'sculpto-opportunities-btn',
   tableId: 'sculpto-table',
   tableBodyId: 'sculpto-table-body',
   addItemFormId: 'add-sculpto-form',
@@ -928,6 +969,8 @@ const runeTransPage = createFlipPage({
   openDetailKey: 'openRuneTransDetailId',
   foldKey: 'runeTransFoldNonProfitable',
   archiveFoldKey: 'runeTransFoldArchived',
+  opportunityFirstKey: 'runeTransOpportunityFirst',
+  opportunityFirstBtnId: 'runetrans-opportunities-btn',
   tableId: 'runetrans-table',
   tableBodyId: 'runetrans-table-body',
   addItemFormId: 'add-runetrans-form',
@@ -959,6 +1002,8 @@ const tailleurPage = createFlipPage({
   openDetailKey: 'openTailleurDetailId',
   foldKey: 'tailleurFoldNonProfitable',
   archiveFoldKey: 'tailleurFoldArchived',
+  opportunityFirstKey: 'tailleurOpportunityFirst',
+  opportunityFirstBtnId: 'tailleur-opportunities-btn',
   tableId: 'tailleur-table',
   tableBodyId: 'tailleur-table-body',
   addItemFormId: 'add-tailleur-form',
@@ -990,6 +1035,8 @@ const alchimistePage = createFlipPage({
   openDetailKey: 'openAlchimisteDetailId',
   foldKey: 'alchimisteFoldNonProfitable',
   archiveFoldKey: 'alchimisteFoldArchived',
+  opportunityFirstKey: 'alchimisteOpportunityFirst',
+  opportunityFirstBtnId: 'alchimiste-opportunities-btn',
   tableId: 'alchimiste-table',
   tableBodyId: 'alchimiste-table-body',
   addItemFormId: 'add-alchimiste-form',
@@ -1023,6 +1070,8 @@ const faconneurPage = createFlipPage({
   openDetailKey: 'openFaconneurDetailId',
   foldKey: 'faconneurFoldNonProfitable',
   archiveFoldKey: 'faconneurFoldArchived',
+  opportunityFirstKey: 'faconneurOpportunityFirst',
+  opportunityFirstBtnId: 'faconneur-opportunities-btn',
   tableId: 'faconneur-table',
   tableBodyId: 'faconneur-table-body',
   addItemFormId: 'add-faconneur-form',
