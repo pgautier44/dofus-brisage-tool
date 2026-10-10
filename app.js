@@ -224,6 +224,7 @@ const state = {
   faconneurFoldNonProfitable: true,
   faconneurFoldArchived: true,
   faconneurOpportunityFirst: false,
+  faconneurLetterFolds: {},
   brisageSort: { column: 'name', direction: 'asc' },
   brisageSearchQuery: '',
 };
@@ -307,6 +308,30 @@ function classifyFlipRatio(ratio) {
 // pour relancer un achat/craft.
 function isOpportunityStats(stats) {
   return stats.count > 0 && stats.soldCount === stats.count && stats.avgRatio !== null && stats.avgRatio >= 1;
+}
+
+// Première lettre d'un nom, accents ramenés à leur lettre de base (ex: "Écharpe" -> "E"),
+// '#' pour tout ce qui ne commence pas par une lettre (ou un nom vide).
+function firstLetterKey(name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return '#';
+  const ch = trimmed.charAt(0).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return /^[A-Z]$/.test(ch) ? ch : '#';
+}
+
+function groupRowsByLetter(rowsToGroup) {
+  const groups = new Map();
+  rowsToGroup.forEach((row) => {
+    const letter = firstLetterKey(row.item.name);
+    if (!groups.has(letter)) groups.set(letter, []);
+    groups.get(letter).push(row);
+  });
+  const letters = [...groups.keys()].sort((a, b) => {
+    if (a === '#') return 1;
+    if (b === '#') return -1;
+    return a.localeCompare(b, 'fr');
+  });
+  return letters.map((letter) => ({ letter, rows: groups.get(letter) }));
 }
 
 function createFlipPage(cfg) {
@@ -399,6 +424,20 @@ function createFlipPage(cfg) {
     opportunitiesBtn.addEventListener('click', () => {
       state[cfg.opportunityFirstKey] = !state[cfg.opportunityFirstKey];
       opportunitiesBtn.classList.toggle('active', state[cfg.opportunityFirstKey]);
+      renderTable();
+    });
+  }
+
+  if (cfg.groupByLetter) {
+    document.getElementById(cfg.expandAllLettersBtnId).addEventListener('click', () => {
+      state[cfg.letterFoldsKey] = {};
+      renderTable();
+    });
+    document.getElementById(cfg.collapseAllLettersBtnId).addEventListener('click', () => {
+      const letters = new Set(items().map((it) => firstLetterKey(it.name)));
+      const folds = {};
+      letters.forEach((letter) => { folds[letter] = true; });
+      state[cfg.letterFoldsKey] = folds;
       renderTable();
     });
   }
@@ -535,10 +574,7 @@ function createFlipPage(cfg) {
       tbody.innerHTML = `<tr><td colspan="${cfg.mainColspan || 7}" class="empty-state">${message}</td></tr>`;
     } else {
       const archivedRows = rows.filter(({ item }) => item.archived);
-      const activeRows = rows.filter(({ item }) => !item.archived);
-      let profitableRows = activeRows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls !== 'pas-rentable');
-      const nonProfitableRows = activeRows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls === 'pas-rentable');
-      const folded = state[cfg.foldKey];
+      let activeRows = rows.filter(({ item }) => !item.archived);
       const archiveFolded = state[cfg.archiveFoldKey];
 
       // "À relancer en premier" : fait remonter en tête du tableau les objets rentables
@@ -546,8 +582,8 @@ function createFlipPage(cfg) {
       // le reste — y compris ce qui est encore en vente.
       let opportunityRows = [];
       if (cfg.opportunityFirstKey && state[cfg.opportunityFirstKey]) {
-        opportunityRows = profitableRows.filter(({ stats }) => isOpportunityStats(stats));
-        profitableRows = profitableRows.filter(({ stats }) => !isOpportunityStats(stats));
+        opportunityRows = activeRows.filter(({ stats }) => isOpportunityStats(stats));
+        activeRows = activeRows.filter(({ stats }) => !isOpportunityStats(stats));
       }
 
       let html = '';
@@ -559,19 +595,45 @@ function createFlipPage(cfg) {
         `;
         html += opportunityRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
       }
-      html += profitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
 
-      if (nonProfitableRows.length > 0) {
-        html += `
-          <tr class="fold-toggle-row" data-fold-toggle="1">
-            <td colspan="${cfg.mainColspan || 7}">
-              <span class="expand-arrow">${folded ? '▶' : '▼'}</span>
-              📁 ${cfg.itemNounPluralCap} non rentables (${nonProfitableRows.length})
-            </td>
-          </tr>
-        `;
-        if (!folded) {
-          html += nonProfitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+      if (cfg.groupByLetter) {
+        // Classement alphabétique sur la 1re lettre du nom, en sections repliables
+        // individuellement ou toutes en même temps (boutons "Tout déplier"/"Tout replier").
+        const letterFolds = state[cfg.letterFoldsKey] || {};
+        html += groupRowsByLetter(activeRows).map(({ letter, rows: letterRows }) => {
+          const letterFolded = !!letterFolds[letter];
+          let group = `
+            <tr class="fold-toggle-row" data-letter-toggle="${letter}">
+              <td colspan="${cfg.mainColspan || 7}">
+                <span class="expand-arrow">${letterFolded ? '▶' : '▼'}</span>
+                <strong>${escapeHtml(letter)}</strong> (${letterRows.length})
+              </td>
+            </tr>
+          `;
+          if (!letterFolded) {
+            group += letterRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+          }
+          return group;
+        }).join('');
+      } else {
+        const profitableRows = activeRows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls !== 'pas-rentable');
+        const nonProfitableRows = activeRows.filter(({ stats }) => classifyFlipRatio(stats.avgRatio).cls === 'pas-rentable');
+        const folded = state[cfg.foldKey];
+
+        html += profitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+
+        if (nonProfitableRows.length > 0) {
+          html += `
+            <tr class="fold-toggle-row" data-fold-toggle="1">
+              <td colspan="${cfg.mainColspan || 7}">
+                <span class="expand-arrow">${folded ? '▶' : '▼'}</span>
+                📁 ${cfg.itemNounPluralCap} non rentables (${nonProfitableRows.length})
+              </td>
+            </tr>
+          `;
+          if (!folded) {
+            html += nonProfitableRows.map(({ item, stats }) => itemRowHtml(item, stats)).join('');
+          }
         }
       }
 
@@ -607,6 +669,15 @@ function createFlipPage(cfg) {
         renderTable();
       });
     }
+
+    tbody.querySelectorAll('[data-letter-toggle]').forEach((row) => {
+      row.addEventListener('click', () => {
+        const letter = row.dataset.letterToggle;
+        if (!state[cfg.letterFoldsKey]) state[cfg.letterFoldsKey] = {};
+        state[cfg.letterFoldsKey][letter] = !state[cfg.letterFoldsKey][letter];
+        renderTable();
+      });
+    });
 
     tbody.querySelectorAll('tr[data-item-id]').forEach((row) => {
       row.addEventListener('click', (e) => {
@@ -1072,6 +1143,10 @@ const faconneurPage = createFlipPage({
   archiveFoldKey: 'faconneurFoldArchived',
   opportunityFirstKey: 'faconneurOpportunityFirst',
   opportunityFirstBtnId: 'faconneur-opportunities-btn',
+  groupByLetter: true,
+  letterFoldsKey: 'faconneurLetterFolds',
+  expandAllLettersBtnId: 'faconneur-expand-all-letters-btn',
+  collapseAllLettersBtnId: 'faconneur-collapse-all-letters-btn',
   tableId: 'faconneur-table',
   tableBodyId: 'faconneur-table-body',
   addItemFormId: 'add-faconneur-form',
