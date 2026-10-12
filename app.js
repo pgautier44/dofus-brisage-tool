@@ -511,7 +511,11 @@ function createFlipPage(cfg) {
           vb = b.stats.avgRatio;
           break;
       }
-      if (va === null || va === undefined) return 1;
+      // Les deux null/undefined : garder un ordre stable au lieu de prétendre que va > vb
+      // (sinon le tri sur une colonne où la plupart des lignes n'ont pas encore de valeur,
+      // comme une "Dernière modification" jamais renseignée, paraît mélanger les lignes
+      // au hasard au lieu de ne rien changer entre elles).
+      if (va === null || va === undefined) return (vb === null || vb === undefined) ? 0 : 1;
       if (vb === null || vb === undefined) return -1;
       if (va < vb) return direction === 'asc' ? -1 : 1;
       if (va > vb) return direction === 'asc' ? 1 : -1;
@@ -1290,7 +1294,7 @@ function sortedBrisageItems() {
       va = a.stillProfitable ? 1 : 0;
       vb = b.stillProfitable ? 1 : 0;
     }
-    if (va === null || va === undefined) return 1;
+    if (va === null || va === undefined) return (vb === null || vb === undefined) ? 0 : 1;
     if (vb === null || vb === undefined) return -1;
     if (va < vb) return direction === 'asc' ? -1 : 1;
     if (va > vb) return direction === 'asc' ? 1 : -1;
