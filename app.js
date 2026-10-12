@@ -233,6 +233,16 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Horodatage complet (pas juste la date) pour pouvoir trier plusieurs modifications
+// faites le même jour dans le bon ordre.
+function touchUpdatedAt(obj) {
+  obj.updatedAt = new Date().toISOString();
+}
+
+function formatDate(iso) {
+  return iso ? new Date(iso).toLocaleDateString('fr-FR') : '—';
+}
+
 function formatKamas(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
   return Math.round(n).toLocaleString('fr-FR');
@@ -454,7 +464,9 @@ function createFlipPage(cfg) {
     const listedDate = todayISODate();
     if (!name) return;
     const itemId = uid();
-    items().push({ id: itemId, name });
+    const newItem = { id: itemId, name };
+    touchUpdatedAt(newItem);
+    items().push(newItem);
     const sale = { id: uid(), jewelId: itemId, purchasePrice, listedDate, salePrice: null, saleDate: null };
     if (cfg.showQuantity) {
       sale.quantity = Number(document.getElementById(cfg.quantityInputId).value) || 1;
@@ -494,6 +506,10 @@ function createFlipPage(cfg) {
         case 'totalGain':
           va = a.stats.totalGain;
           vb = b.stats.totalGain;
+          break;
+        case 'updatedAt':
+          va = a.item.updatedAt;
+          vb = b.item.updatedAt;
           break;
         case 'avgRatio':
         default:
@@ -556,6 +572,7 @@ function createFlipPage(cfg) {
           <div class="ratio-note">${stats.avgRatio !== null ? ratioLabel + " du prix d'achat" : ''}</div>
         </td>
         ${craftTooExpensiveCell}
+        <td>${formatDate(item.updatedAt)}</td>
         <td class="row-actions">${actionsHtml}</td>
       </tr>
       ${buildDetailRowHtml(item)}
@@ -704,6 +721,9 @@ function createFlipPage(cfg) {
     tbody.querySelectorAll('.delete-jewel-sale-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const id = e.target.dataset.id;
+        const sale = sales().find((s) => s.id === id);
+        const item = sale && items().find((i) => i.id === sale.jewelId);
+        if (item) touchUpdatedAt(item);
         markDeleted(id);
         state.data[cfg.salesKey] = sales().filter((s) => s.id !== id);
         saveData();
@@ -730,6 +750,7 @@ function createFlipPage(cfg) {
         const item = items().find((i) => i.id === e.target.dataset.id);
         if (!item) return;
         item.craftTooExpensive = e.target.checked;
+        touchUpdatedAt(item);
         saveData();
         renderTable();
       });
@@ -739,6 +760,7 @@ function createFlipPage(cfg) {
         const item = items().find((i) => i.id === e.target.dataset.id);
         if (!item) return;
         item.archived = true;
+        touchUpdatedAt(item);
         saveData();
         renderTable();
       });
@@ -748,6 +770,7 @@ function createFlipPage(cfg) {
         const item = items().find((i) => i.id === e.target.dataset.id);
         if (!item) return;
         item.archived = false;
+        touchUpdatedAt(item);
         saveData();
         renderTable();
       });
@@ -818,6 +841,7 @@ function createFlipPage(cfg) {
       e.preventDefault();
       const sale = readSaleForm(form);
       sales().push({ id: uid(), jewelId: itemId, ...sale });
+      touchUpdatedAt(item);
       saveData();
       render();
     });
@@ -843,6 +867,7 @@ function createFlipPage(cfg) {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       Object.assign(sale, readSaleForm(form, sale));
+      touchUpdatedAt(item);
       saveData();
       render();
     });
@@ -872,6 +897,7 @@ function createFlipPage(cfg) {
       const name = form.querySelector('.edit-jewel-name').value.trim();
       if (!name) return;
       item.name = name;
+      touchUpdatedAt(item);
       saveData();
       render();
     });
@@ -993,7 +1019,7 @@ const jewelryPage = createFlipPage({
   itemNounPluralCap: 'Bijoux',
   addButtonLabel: '+ Nouveau bijou',
   showCraftTooExpensive: true,
-  mainColspan: 8,
+  mainColspan: 9,
   lastWindowKey: 'jewelryLastWindow',
   levelMinInputId: 'jewelry-level-min',
   levelMaxInputId: 'jewelry-level-max',
@@ -1026,7 +1052,7 @@ const sculptoPage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 8,
+  mainColspan: 9,
   lastWindowKey: 'sculptoLastWindow',
   levelMinInputId: 'sculpto-level-min',
   levelMaxInputId: 'sculpto-level-max',
@@ -1059,7 +1085,7 @@ const runeTransPage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 8,
+  mainColspan: 9,
   lastWindowKey: 'runeTransLastWindow',
   levelMinInputId: 'runetrans-level-min',
   levelMaxInputId: 'runetrans-level-max',
@@ -1092,7 +1118,7 @@ const tailleurPage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 8,
+  mainColspan: 9,
   lastWindowKey: 'tailleurLastWindow',
   levelMinInputId: 'tailleur-level-min',
   levelMaxInputId: 'tailleur-level-max',
@@ -1127,7 +1153,7 @@ const alchimistePage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 8,
+  mainColspan: 9,
   lastWindowKey: 'alchimisteLastWindow',
   levelMinInputId: 'alchimiste-level-min',
   levelMaxInputId: 'alchimiste-level-max',
@@ -1164,7 +1190,7 @@ const faconneurPage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 8,
+  mainColspan: 9,
   lastWindowKey: 'faconneurLastWindow',
   levelMinInputId: 'faconneur-level-min',
   levelMaxInputId: 'faconneur-level-max',
@@ -1186,7 +1212,7 @@ document.getElementById('add-brisage-form').addEventListener('submit', (e) => {
   const name = document.getElementById('brisage-name').value.trim();
   if (!name) return;
   const stillProfitable = document.getElementById('brisage-still-profitable').checked;
-  state.data.brisageItems.push({
+  const newBrisageItem = {
     id: uid(),
     name,
     purchasePrice: Number(document.getElementById('brisage-purchase-price').value) || 0,
@@ -1195,7 +1221,9 @@ document.getElementById('add-brisage-form').addEventListener('submit', (e) => {
     breakPercent: Number(document.getElementById('brisage-break-percent').value) || 0,
     stillProfitable,
     uncheckedSince: stillProfitable ? null : todayISODate(),
-  });
+  };
+  touchUpdatedAt(newBrisageItem);
+  state.data.brisageItems.push(newBrisageItem);
   saveData();
   e.target.reset();
   document.getElementById('brisage-still-profitable').checked = true;
@@ -1239,6 +1267,7 @@ function recheckBrisageProfitableFlags() {
       if (ageDays >= BRISAGE_RECHECK_DAYS) {
         item.stillProfitable = true;
         item.uncheckedSince = null;
+        touchUpdatedAt(item);
         changed = true;
       }
     }
@@ -1269,6 +1298,8 @@ function sortedBrisageItems() {
       va = a.stillProfitable ? 1 : 0;
       vb = b.stillProfitable ? 1 : 0;
     }
+    if (va === null || va === undefined) return 1;
+    if (vb === null || vb === undefined) return -1;
     if (va < vb) return direction === 'asc' ? -1 : 1;
     if (va > vb) return direction === 'asc' ? 1 : -1;
     return 0;
@@ -1289,6 +1320,7 @@ function brisageRowHtml(item) {
         <input type="checkbox" class="brisage-profitable-checkbox" data-id="${item.id}" ${item.stillProfitable ? 'checked' : ''}>
         ${brisageProfitableAgeNote(item)}
       </td>
+      <td>${formatDate(item.updatedAt)}</td>
       <td class="row-actions">
         <button type="button" class="delete-brisage-btn" data-id="${item.id}">Supprimer</button>
       </td>
@@ -1306,7 +1338,7 @@ function renderBrisageTable() {
     const message = q
       ? `Aucun objet ne correspond à "${escapeHtml(q)}".`
       : 'Aucun objet pour le moment. Ajoute-en un avec "+ Nouvel objet".';
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">${message}</td></tr>`;
   } else {
     tbody.innerHTML = rows.map(brisageRowHtml).join('');
   }
@@ -1323,6 +1355,7 @@ function renderBrisageTable() {
       } else {
         item[field] = Number(e.target.value) || 0;
       }
+      touchUpdatedAt(item);
       saveData();
     });
   });
@@ -1333,6 +1366,7 @@ function renderBrisageTable() {
       if (!item) return;
       item.stillProfitable = e.target.checked;
       item.uncheckedSince = e.target.checked ? null : todayISODate();
+      touchUpdatedAt(item);
       saveData();
       renderBrisageTable();
     });
