@@ -374,7 +374,6 @@ function createFlipPage(cfg) {
     const soldCount = soldSales.length;
 
     let avgPurchasePrice = null;
-    let avgDelay = null;
     let totalGain = null;
     let avgRatio = null;
 
@@ -393,11 +392,10 @@ function createFlipPage(cfg) {
       const totalPurchase = soldSales.reduce((s, e) => s + e.purchasePrice, 0);
       const totalSale = soldSales.reduce((s, e) => s + e.salePrice, 0);
       totalGain = totalSale - totalPurchase;
-      avgDelay = soldSales.reduce((s, e) => s + saleDelay(e), 0) / soldCount;
       avgRatio = totalPurchase > 0 ? totalSale / totalPurchase : null;
     }
 
-    return { count, soldCount, avgPurchasePrice, avgDelay, totalGain, avgRatio };
+    return { count, soldCount, avgPurchasePrice, totalGain, avgRatio };
   }
 
   // "Dernière fenêtre testée" — a manually-entered level min/max, purely a note to self
@@ -499,10 +497,6 @@ function createFlipPage(cfg) {
           va = a.stats.count;
           vb = b.stats.count;
           break;
-        case 'avgDelay':
-          va = a.stats.avgDelay;
-          vb = b.stats.avgDelay;
-          break;
         case 'totalGain':
           va = a.stats.totalGain;
           vb = b.stats.totalGain;
@@ -532,7 +526,6 @@ function createFlipPage(cfg) {
     const ratioLabel = stats.avgRatio !== null ? formatPercent(stats.avgRatio * 100, 0) : '—';
     const gainCls = stats.totalGain === null ? '' : stats.totalGain >= 0 ? 'gain-positive' : 'gain-negative';
     const gainLabel = stats.totalGain === null ? '—' : (stats.totalGain >= 0 ? '+' : '') + formatKamas(stats.totalGain);
-    const delayLabel = stats.avgDelay === null ? '—' : Math.round(stats.avgDelay) + ' j';
     const isOpportunity = isOpportunityStats(stats);
     const opportunityIcon = isOpportunity
       ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
@@ -565,7 +558,6 @@ function createFlipPage(cfg) {
         </td>
         <td>${formatKamas(stats.avgPurchasePrice)}</td>
         <td>${stats.count}</td>
-        <td>${delayLabel}</td>
         <td class="${gainCls}">${gainLabel}</td>
         <td>
           <span class="badge ${cat.cls}">${cat.label}</span>
@@ -1019,7 +1011,7 @@ const jewelryPage = createFlipPage({
   itemNounPluralCap: 'Bijoux',
   addButtonLabel: '+ Nouveau bijou',
   showCraftTooExpensive: true,
-  mainColspan: 9,
+  mainColspan: 8,
   lastWindowKey: 'jewelryLastWindow',
   levelMinInputId: 'jewelry-level-min',
   levelMaxInputId: 'jewelry-level-max',
@@ -1052,7 +1044,7 @@ const sculptoPage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 9,
+  mainColspan: 8,
   lastWindowKey: 'sculptoLastWindow',
   levelMinInputId: 'sculpto-level-min',
   levelMaxInputId: 'sculpto-level-max',
@@ -1085,7 +1077,7 @@ const runeTransPage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 9,
+  mainColspan: 8,
   lastWindowKey: 'runeTransLastWindow',
   levelMinInputId: 'runetrans-level-min',
   levelMaxInputId: 'runetrans-level-max',
@@ -1118,7 +1110,7 @@ const tailleurPage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 9,
+  mainColspan: 8,
   lastWindowKey: 'tailleurLastWindow',
   levelMinInputId: 'tailleur-level-min',
   levelMaxInputId: 'tailleur-level-max',
@@ -1153,7 +1145,7 @@ const alchimistePage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 9,
+  mainColspan: 8,
   lastWindowKey: 'alchimisteLastWindow',
   levelMinInputId: 'alchimiste-level-min',
   levelMaxInputId: 'alchimiste-level-max',
@@ -1190,7 +1182,7 @@ const faconneurPage = createFlipPage({
   itemNounPluralCap: 'Objets',
   addButtonLabel: '+ Nouvel objet',
   showCraftTooExpensive: true,
-  mainColspan: 9,
+  mainColspan: 8,
   lastWindowKey: 'faconneurLastWindow',
   levelMinInputId: 'faconneur-level-min',
   levelMaxInputId: 'faconneur-level-max',
