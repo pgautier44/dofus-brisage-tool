@@ -10,7 +10,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // to catch that case and warn before a stale save can silently drop data (see the
 // "Dernière modification"/Façonneur incident on 2026-10-13: a tab open since before the
 // Alchimiste/Façonneur pages existed wiped those keys with its old, pre-merge saveData()).
-const APP_VERSION = '20261013b';
+const APP_VERSION = '20261013c';
 
 async function isVersionStale() {
   try {
@@ -1501,6 +1501,22 @@ document.getElementById('dismiss-legacy-btn').addEventListener('click', () => {
 
 document.getElementById('reload-for-update-btn').addEventListener('click', () => {
   window.location.reload();
+});
+
+// Sauvegarde locale manuelle : indépendante de tout bug éventuel côté sauvegarde/serveur,
+// entièrement sous le contrôle de l'utilisateur — un filet de sécurité qui ne dépend pas
+// de faire confiance au code de synchronisation.
+document.getElementById('export-backup-btn').addEventListener('click', () => {
+  const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+  const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `dofus-brisage-sauvegarde-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 });
 
 const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
