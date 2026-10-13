@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20261012c">
+<link rel="stylesheet" href="style.css?v=20261013a">
 </head>
 <body class="loading">
 <header>
@@ -16,6 +16,14 @@
 </header>
 
 <main>
+
+  <section class="card update-banner hidden" id="update-available-banner">
+    <h2>⚠️ Nouvelle version disponible</h2>
+    <p class="hint">Cet onglet a été ouvert avant une mise à jour de l'outil. Pour éviter de perdre des données (une sauvegarde depuis un onglet périmé peut écraser ce que tu as ajouté ailleurs), recharge la page avant de continuer à saisir des choses.</p>
+    <div class="form-actions">
+      <button type="button" id="reload-for-update-btn" class="primary-btn">Recharger la page</button>
+    </div>
+  </section>
 
   <div class="tabs" role="tablist">
     <button type="button" class="tab-btn active" data-tab="runetrans" role="tab" aria-selected="true">Rune trans</button>
@@ -747,6 +755,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20261012c"></script>
+<script src="app.js?v=20261013a"></script>
 </body>
 </html>

@@ -3,6 +3,28 @@
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Bumped on every deploy, in lockstep with the ?v= cache-busting suffix on index.html's
+// style.css/app.js tags. An onglet left open across a deploy keeps running this exact
+// (now stale) copy of app.js in memory — reloading index.html doesn't help an already-open
+// tab. checkForNewVersion() periodically compares this against version.txt (never cached)
+// to catch that case and warn before a stale save can silently drop data (see the
+// "Dernière modification"/Façonneur incident on 2026-10-13: a tab open since before the
+// Alchimiste/Façonneur pages existed wiped those keys with its old, pre-merge saveData()).
+const APP_VERSION = '20261013a';
+
+async function checkForNewVersion() {
+  try {
+    const res = await fetch(`version.txt?_=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const remoteVersion = (await res.text()).trim();
+    if (remoteVersion && remoteVersion !== APP_VERSION) {
+      document.getElementById('update-available-banner').classList.remove('hidden');
+    }
+  } catch (e) {
+    // Pas de réseau / page hors-ligne : on retentera au prochain intervalle, rien à faire.
+  }
+}
+
 function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
@@ -1458,11 +1480,19 @@ document.getElementById('dismiss-legacy-btn').addEventListener('click', () => {
   document.getElementById('legacy-import-banner').classList.add('hidden');
 });
 
+document.getElementById('reload-for-update-btn').addEventListener('click', () => {
+  window.location.reload();
+});
+
+const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
 async function init() {
   state.data = await loadData();
   render();
   document.body.classList.remove('loading');
   checkLegacyData();
+  checkForNewVersion();
+  setInterval(checkForNewVersion, VERSION_CHECK_INTERVAL_MS);
 }
 
 init();

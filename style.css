@@ -81,6 +81,9 @@ main {
 .legacy-banner { border-top-color: var(--rel-pas-rentable); background: #fdf3e7; }
 .legacy-banner h2 { margin-bottom: 6px; }
 
+.update-banner { border-top-color: var(--pas-rentable); background: #fdecec; margin-bottom: 16px; }
+.update-banner h2 { margin-bottom: 6px; }
+
 .card h2 { margin-top: 0; }
 
 .hint { color: var(--text-dim); font-size: 0.9rem; }
