@@ -10,18 +10,25 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // to catch that case and warn before a stale save can silently drop data (see the
 // "Dernière modification"/Façonneur incident on 2026-10-13: a tab open since before the
 // Alchimiste/Façonneur pages existed wiped those keys with its old, pre-merge saveData()).
-const APP_VERSION = '20261013a';
+const APP_VERSION = '20261013b';
 
-async function checkForNewVersion() {
+async function isVersionStale() {
   try {
     const res = await fetch(`version.txt?_=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) return;
+    if (!res.ok) return false;
     const remoteVersion = (await res.text()).trim();
-    if (remoteVersion && remoteVersion !== APP_VERSION) {
-      document.getElementById('update-available-banner').classList.remove('hidden');
-    }
+    return !!(remoteVersion && remoteVersion !== APP_VERSION);
   } catch (e) {
-    // Pas de réseau / page hors-ligne : on retentera au prochain intervalle, rien à faire.
+    // Pas de réseau / page hors-ligne : impossible de savoir, mais on ne bloque pas pour
+    // autant — saveData() échouera de toute façon si le réseau est indisponible, et gère
+    // déjà ce cas avec son propre message.
+    return false;
+  }
+}
+
+async function checkForNewVersion() {
+  if (await isVersionStale()) {
+    document.getElementById('update-available-banner').classList.remove('hidden');
   }
 }
 
@@ -146,6 +153,18 @@ function saveData() {
 }
 
 async function doSaveData() {
+  // Verrou dur, pas juste un bandeau : un onglet tournant une version périmée de l'outil
+  // ne doit JAMAIS pouvoir écrire sur le serveur (c'est exactement ce qui a effacé
+  // faconneurItems/alchimisteItems/deletedIds le 2026-10-12 — un onglet resté ouvert avec
+  // l'ancien code, dont la sauvegarde ne savait même pas que ces clés existaient). On
+  // vérifie à CHAQUE sauvegarde, pas seulement au chargement, pour attraper le cas d'un
+  // onglet resté ouvert pendant qu'un nouveau déploiement sort.
+  if (await isVersionStale()) {
+    document.getElementById('update-available-banner').classList.remove('hidden');
+    showAlert("Ce changement n'a PAS été enregistré : cet onglet tourne une version périmée de l'outil. Recharge la page (Ctrl+Maj+R) puis réessaie.");
+    return;
+  }
+
   const { data: remoteRow, error: fetchError } = await fetchRemoteData();
   if (!fetchError && remoteRow) {
     state.data = mergeStateForSave(state.data, remoteRow.data);
