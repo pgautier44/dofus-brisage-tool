@@ -10,7 +10,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // to catch that case and warn before a stale save can silently drop data (see the
 // "Dernière modification"/Façonneur incident on 2026-10-13: a tab open since before the
 // Alchimiste/Façonneur pages existed wiped those keys with its old, pre-merge saveData()).
-const APP_VERSION = '20261013d';
+const APP_VERSION = '20261013e';
 
 async function isVersionStale() {
   try {

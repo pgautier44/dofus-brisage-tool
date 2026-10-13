@@ -269,6 +269,19 @@ th.sorted::after {
 tbody tr:nth-child(even) { background: var(--row-stripe); }
 tbody tr:hover { background: var(--row-hover); }
 
+/* La colonne Actions reste toujours visible/cliquable même quand le tableau déborde et
+   qu'il faut scroller horizontalement — elle colle au bord droit de la zone de défilement
+   au lieu de sortir de l'écran. background-color: inherit reprend la couleur de fond
+   actuelle de la ligne (pair/impair, survol, opportunité, archivé...) pour ne pas trancher
+   visuellement avec le reste de la ligne pendant le scroll. */
+th.actions-col, td.row-actions {
+  position: sticky;
+  right: 0;
+  background-color: inherit;
+  box-shadow: -6px 0 8px -6px rgba(43, 36, 24, 0.2);
+}
+th.actions-col { background-color: var(--panel); }
+
 tr.jewel-row-opportunity { background: #e6f6e0; }
 tr.jewel-row-opportunity:hover { background: #d7efce; }
 
