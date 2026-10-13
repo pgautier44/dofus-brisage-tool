@@ -10,7 +10,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // to catch that case and warn before a stale save can silently drop data (see the
 // "Dernière modification"/Façonneur incident on 2026-10-13: a tab open since before the
 // Alchimiste/Façonneur pages existed wiped those keys with its old, pre-merge saveData()).
-const APP_VERSION = '20261013c';
+const APP_VERSION = '20261013d';
 
 async function isVersionStale() {
   try {
@@ -26,10 +26,48 @@ async function isVersionStale() {
   }
 }
 
+// Un rechargement sans prévenir perdrait un formulaire en cours de remplissage (nom/prix
+// pas encore validé) — on ne recharge donc automatiquement que quand rien de tel n'est
+// ouvert. Sinon on retente au prochain passage (toutes les 5 min) ; d'ici là, saveData()
+// bloque de toute façon toute sauvegarde périmée (voir doSaveData()).
+function hasOpenEditingUI() {
+  if (document.querySelectorAll('.panel:not(.hidden)').length > 0) return true;
+  if (document.querySelectorAll(
+    '.add-jewel-sale-holder, .edit-jewel-holder, .edit-jewel-sale-holder'
+  ).length > 0) return true;
+  const modal = document.getElementById('modal-overlay');
+  if (modal && !modal.classList.contains('hidden')) return true;
+  return false;
+}
+
+const AUTO_RELOAD_ATTEMPTED_KEY = 'dofusBrisageAutoReloadAttempted';
+
 async function checkForNewVersion() {
-  if (await isVersionStale()) {
-    document.getElementById('update-available-banner').classList.remove('hidden');
+  if (!(await isVersionStale())) {
+    // À jour : si un rechargement automatique avait déjà été tenté pour un épisode de
+    // péremption précédent, on réarme la protection pour le prochain déploiement.
+    try { sessionStorage.removeItem(AUTO_RELOAD_ATTEMPTED_KEY); } catch (e) { /* tant pis */ }
+    return;
   }
+
+  document.getElementById('update-available-banner').classList.remove('hidden');
+
+  if (hasOpenEditingUI()) return;
+
+  // Protection anti-boucle : si un rechargement automatique a déjà été tenté pendant cet
+  // épisode de péremption et que ça n'a pas suffi (version.txt et app.js désynchronisés,
+  // ce qui ne devrait jamais arriver en déploiement normal), on arrête d'insister — mieux
+  // vaut laisser le bandeau affiché (et saveData() bloqué) que recharger en boucle.
+  let alreadyAttempted = false;
+  try { alreadyAttempted = sessionStorage.getItem(AUTO_RELOAD_ATTEMPTED_KEY) === '1'; } catch (e) { /* tant pis */ }
+  if (alreadyAttempted) return;
+
+  try {
+    sessionStorage.setItem(AUTO_RELOAD_ATTEMPTED_KEY, '1');
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (activeTab) sessionStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab.dataset.tab);
+  } catch (e) { /* tant pis */ }
+  window.location.reload();
 }
 
 function uid() {
@@ -296,17 +334,26 @@ function formatPercent(n, decimals = 1) {
 
 // ---------- Tabs ----------
 
+const ACTIVE_TAB_STORAGE_KEY = 'dofusBrisageActiveTab';
+
+function switchToTab(tab) {
+  const targetBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (!targetBtn) return;
+  document.querySelectorAll('.tab-btn').forEach((b) => {
+    const isActive = b === targetBtn;
+    b.classList.toggle('active', isActive);
+    b.setAttribute('aria-selected', String(isActive));
+  });
+  document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+    panel.classList.toggle('hidden', panel.dataset.tabPanel !== tab);
+  });
+}
+
 document.querySelectorAll('.tab-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     const tab = btn.dataset.tab;
-    document.querySelectorAll('.tab-btn').forEach((b) => {
-      const isActive = b === btn;
-      b.classList.toggle('active', isActive);
-      b.setAttribute('aria-selected', String(isActive));
-    });
-    document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
-      panel.classList.toggle('hidden', panel.dataset.tabPanel !== tab);
-    });
+    switchToTab(tab);
+    try { sessionStorage.setItem(ACTIVE_TAB_STORAGE_KEY, tab); } catch (e) { /* stockage indisponible, tant pis */ }
   });
 });
 
@@ -1525,6 +1572,13 @@ async function init() {
   state.data = await loadData();
   render();
   document.body.classList.remove('loading');
+  try {
+    const savedTab = sessionStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+    if (savedTab) {
+      switchToTab(savedTab);
+      sessionStorage.removeItem(ACTIVE_TAB_STORAGE_KEY);
+    }
+  } catch (e) { /* stockage indisponible, tant pis — on garde l'onglet par défaut */ }
   checkLegacyData();
   checkForNewVersion();
   setInterval(checkForNewVersion, VERSION_CHECK_INTERVAL_MS);
