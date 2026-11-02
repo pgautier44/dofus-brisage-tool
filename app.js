@@ -10,7 +10,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // to catch that case and warn before a stale save can silently drop data (see the
 // "Dernière modification"/Façonneur incident on 2026-10-13: a tab open since before the
 // Alchimiste/Façonneur pages existed wiped those keys with its old, pre-merge saveData()).
-const APP_VERSION = '20261013e';
+const APP_VERSION = '20261102a';
 
 async function isVersionStale() {
   try {
@@ -94,7 +94,7 @@ async function loadData() {
   if (error) {
     console.error('Impossible de charger les données', error);
     showAlert("Impossible de charger les données depuis le serveur. Vérifie ta connexion internet puis clique sur 'Actualiser'.");
-    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], alchimisteItems: [], alchimisteSales: [], faconneurItems: [], faconneurSales: [], deletedIds: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null }, alchimisteLastWindow: { min: null, max: null }, faconneurLastWindow: { min: null, max: null } };
+    return { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], alchimisteItems: [], alchimisteSales: [], faconneurItems: [], faconneurSales: [], faconneurTitiItems: [], faconneurTitiSales: [], deletedIds: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null }, alchimisteLastWindow: { min: null, max: null }, faconneurLastWindow: { min: null, max: null }, faconneurTitiLastWindow: { min: null, max: null } };
   }
 
   const d = data.data || {};
@@ -126,6 +126,8 @@ async function loadData() {
     alchimisteSales: d.alchimisteSales || [],
     faconneurItems: d.faconneurItems || [],
     faconneurSales: d.faconneurSales || [],
+    faconneurTitiItems: d.faconneurTitiItems || [],
+    faconneurTitiSales: d.faconneurTitiSales || [],
     // deletedIds: tombstones for deleted items/sales, so that a save from a browser tab
     // that is still holding a stale (pre-deletion) copy never resurrects them — see
     // mergeStateForSave().
@@ -136,6 +138,7 @@ async function loadData() {
     tailleurLastWindow: d.tailleurLastWindow || { min: null, max: null },
     alchimisteLastWindow: d.alchimisteLastWindow || { min: null, max: null },
     faconneurLastWindow: d.faconneurLastWindow || { min: null, max: null },
+    faconneurTitiLastWindow: d.faconneurTitiLastWindow || { min: null, max: null },
   };
 }
 
@@ -266,7 +269,7 @@ const state = {
   // sculptorItems/sculptorAttempts/forgeronItems/forgeronAttempts are kept here (even
   // though those pages were removed) so a save never strips that data out of the
   // shared Supabase row — loadData() still reads them back in on every load.
-  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], alchimisteItems: [], alchimisteSales: [], faconneurItems: [], faconneurSales: [], deletedIds: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null }, alchimisteLastWindow: { min: null, max: null }, faconneurLastWindow: { min: null, max: null } },
+  data: { runeTypes: [], runeCategories: [], items: [], attempts: [], sculptorItems: [], sculptorAttempts: [], forgeronItems: [], forgeronAttempts: [], jewels: [], jewelSales: [], sculptoItems: [], sculptoSales: [], brisageItems: [], runeTransItems: [], runeTransSales: [], tailleurItems: [], tailleurSales: [], alchimisteItems: [], alchimisteSales: [], faconneurItems: [], faconneurSales: [], faconneurTitiItems: [], faconneurTitiSales: [], deletedIds: [], jewelryLastWindow: { min: null, max: null }, sculptoLastWindow: { min: null, max: null }, runeTransLastWindow: { min: null, max: null }, tailleurLastWindow: { min: null, max: null }, alchimisteLastWindow: { min: null, max: null }, faconneurLastWindow: { min: null, max: null }, faconneurTitiLastWindow: { min: null, max: null } },
   jewelrySort: { column: 'avgRatio', direction: 'desc' },
   openJewelDetailId: null,
   jewelrySearchQuery: '',
@@ -304,6 +307,13 @@ const state = {
   faconneurFoldArchived: true,
   faconneurOpportunityFirst: false,
   faconneurLetterFolds: {},
+  faconneurTitiSort: { column: 'avgRatio', direction: 'desc' },
+  openFaconneurTitiDetailId: null,
+  faconneurTitiSearchQuery: '',
+  faconneurTitiFoldNonProfitable: true,
+  faconneurTitiFoldArchived: true,
+  faconneurTitiOpportunityFirst: false,
+  faconneurTitiLetterFolds: {},
   brisageSort: { column: 'name', direction: 'asc' },
   brisageSearchQuery: '',
 };
@@ -1280,6 +1290,43 @@ const faconneurPage = createFlipPage({
   levelMaxInputId: 'faconneur-level-max',
 });
 
+const faconneurTitiPage = createFlipPage({
+  itemsKey: 'faconneurTitiItems',
+  salesKey: 'faconneurTitiSales',
+  sortKey: 'faconneurTitiSort',
+  searchKey: 'faconneurTitiSearchQuery',
+  openDetailKey: 'openFaconneurTitiDetailId',
+  foldKey: 'faconneurTitiFoldNonProfitable',
+  archiveFoldKey: 'faconneurTitiFoldArchived',
+  opportunityFirstKey: 'faconneurTitiOpportunityFirst',
+  opportunityFirstBtnId: 'faconneurtiti-opportunities-btn',
+  groupByLetter: true,
+  letterFoldsKey: 'faconneurTitiLetterFolds',
+  expandAllLettersBtnId: 'faconneurtiti-expand-all-letters-btn',
+  collapseAllLettersBtnId: 'faconneurtiti-collapse-all-letters-btn',
+  tableId: 'faconneurtiti-table',
+  tableBodyId: 'faconneurtiti-table-body',
+  addItemFormId: 'add-faconneurtiti-form',
+  itemNameInputId: 'faconneurtiti-name',
+  itemPriceInputId: 'faconneurtiti-purchase-price',
+  showAddItemBtnId: 'show-add-faconneurtiti-btn',
+  searchInputId: 'faconneurtiti-search',
+  refreshBtnId: 'faconneurtiti-refresh-btn',
+  entryTemplateId: 'faconneurtiti-entry-template',
+  editTemplateId: 'edit-faconneurtiti-template',
+  totalInvestedElId: 'faconneurtiti-total-invested',
+  totalCollectedElId: 'faconneurtiti-total-collected',
+  totalNetElId: 'faconneurtiti-total-net',
+  itemNoun: 'objet',
+  itemNounPluralCap: 'Objets',
+  addButtonLabel: '+ Nouvel objet',
+  showCraftTooExpensive: true,
+  mainColspan: 8,
+  lastWindowKey: 'faconneurTitiLastWindow',
+  levelMinInputId: 'faconneurtiti-level-min',
+  levelMaxInputId: 'faconneurtiti-level-max',
+});
+
 // ---------- Brisage (simple, manually-entered items — no essai tracking) ----------
 
 document.getElementById('show-add-brisage-btn').addEventListener('click', () => {
@@ -1488,6 +1535,7 @@ function render() {
   tailleurPage.renderTable();
   alchimistePage.renderTable();
   faconneurPage.renderTable();
+  faconneurTitiPage.renderTable();
   renderBrisageTable();
 }
 
