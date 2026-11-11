@@ -1,8 +1,8 @@
 import { LINES, RUNE_BY_ID, RUNES } from './config';
 import { isRuneAvailable } from './caps';
 import { calcSuccessProbability } from './probability';
-import { isGoalReached } from './state';
-import type { CoachAdvice, LineKey, ObjectState, RuneConfig } from './types';
+import { effectiveMinOk, isGoalReached } from './state';
+import type { CoachAdvice, GoalOverrides, LineKey, ObjectState, RuneConfig } from './types';
 
 const PHASE_B_PRIORITY: LineKey[] = ['rair', 'age', 'pui', 'vi', 'rterre', 'rfeu'];
 
@@ -29,27 +29,41 @@ function advise(
   return { phase, rune, reason, p, goalReached };
 }
 
+/** true si la ligne n'a pas d'exigence (minOk null) ou si sa valeur l'atteint déjà */
+function meetsGoal(state: ObjectState, line: LineKey, goals?: GoalOverrides): boolean {
+  const minOk = effectiveMinOk(line, goals);
+  return minOk === null || state.values[line] >= minOk;
+}
+
 /**
  * Conseil du coach, en deux phases :
- * - Phase A (PA == 0) : priorité Cri (si < 4), sinon Do (si < 5), sinon Ga Pa.
+ * - Phase A (PA == 0) : priorité Cri (si sous le minimum visé), sinon Do (idem), sinon
+ *   Ga Pa — tenté dès que Cri et Do atteignent le minimum visé, quelle que soit sa
+ *   probabilité de réussite (elle ne dépassera jamais 50% par construction : c'est
+ *   attendu, pas une raison de ne pas essayer).
  * - Phase B (PA == 1) : uniquement des runes de poids < 10, dans l'ordre de priorité
  *   Ré Per Air, Agilité, Puissance, Vitalité, Ré Terre, Ré Feu. Jamais Cri/Do/Ga Pa.
- *   Si Cri ou Do est retombé sous son minimum, impossible d'y remédier sans risquer le
- *   PA (ces runes pèsent >= 10) : le coach prévient plutôt que de conseiller une pose.
+ *   Si Cri ou Do est retombé sous le minimum visé, impossible d'y remédier sans
+ *   risquer le PA (ces runes pèsent >= 10) : le coach prévient plutôt que de
+ *   conseiller une pose.
+ *
+ * `goals` permet de remplacer les minimums par défaut (config.ts) par des minimums
+ * choisis par l'utilisateur, par exemple pour viser un anneau plus fort que le
+ * minimum "jouable".
  */
-export function getCoachAdvice(state: ObjectState): CoachAdvice {
+export function getCoachAdvice(state: ObjectState, goals?: GoalOverrides): CoachAdvice {
   if (state.values.pa === 0) {
-    if (state.values.cri < LINES.cri.minOk!) {
-      return advise(state, 'A', RUNE_BY_ID.cri, 'Critique sous le minimum : on sécurise le Cri avant tout.');
+    if (!meetsGoal(state, 'cri', goals)) {
+      return advise(state, 'A', RUNE_BY_ID.cri, 'Critique sous le minimum visé : on le sécurise avant tout.');
     }
-    if (state.values.do < LINES.do.minOk!) {
-      return advise(state, 'A', RUNE_BY_ID.do, 'Dommages sous le minimum : on sécurise le Do avant le PA.');
+    if (!meetsGoal(state, 'do', goals)) {
+      return advise(state, 'A', RUNE_BY_ID.do, 'Dommages sous le minimum visé : on le sécurise avant le PA.');
     }
-    return advise(state, 'A', RUNE_BY_ID.gaPa, 'Cri et Do sont bons : on tente le Ga Pa.');
+    return advise(state, 'A', RUNE_BY_ID.gaPa, 'Cri et Do atteignent le minimum visé : tente le Ga Pa.');
   }
 
   // Phase B : le PA est acquis, on ne le remet plus en jeu avec des runes lourdes.
-  if (state.values.cri < LINES.cri.minOk! || state.values.do < LINES.do.minOk!) {
+  if (!meetsGoal(state, 'cri', goals) || !meetsGoal(state, 'do', goals)) {
     return advise(
       state,
       'B',
@@ -59,16 +73,14 @@ export function getCoachAdvice(state: ObjectState): CoachAdvice {
   }
 
   for (const line of PHASE_B_PRIORITY) {
-    const minOk = LINES[line].minOk;
-    if (minOk === null) continue;
-    if (state.values[line] >= minOk) continue;
+    if (meetsGoal(state, line, goals)) continue;
     const rune = bestAvailableRune(state, phaseBCandidateRunes(line));
     if (rune) {
-      return advise(state, 'B', rune, `${LINES[line].label} sous le minimum : on complète en restant sous 10 de poids.`);
+      return advise(state, 'B', rune, `${LINES[line].label} sous le minimum visé : on complète en restant sous 10 de poids.`);
     }
   }
 
-  if (isGoalReached(state)) {
+  if (isGoalReached(state, goals)) {
     return advise(state, 'done', null, 'Objectif atteint, arrête-toi.', true);
   }
 

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RUNES } from '../engine/config';
-import type { ObjectState } from '../engine/types';
+import type { GoalOverrides, ObjectState } from '../engine/types';
 import { loadRunePrices, saveRunePrices, type RunePrices } from '../storage';
 import type { SimulationAggregate, SimulationRequest } from '../worker/simulationWorker';
 
-export function EstimationTab({ currentState }: { currentState: ObjectState }) {
+export function EstimationTab({ currentState, goals }: { currentState: ObjectState; goals?: GoalOverrides }) {
   const [prices, setPrices] = useState<RunePrices>(() => loadRunePrices());
   const [trials, setTrials] = useState(1000);
   const [running, setRunning] = useState(false);
@@ -43,6 +43,7 @@ export function EstimationTab({ currentState }: { currentState: ObjectState }) {
       trials,
       seed: Math.floor(Math.random() * 2 ** 31),
       pricePerRune: prices.perRune,
+      goals,
     };
     worker.postMessage(request);
   }

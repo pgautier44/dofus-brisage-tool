@@ -2,12 +2,14 @@ import { RUNE_LIMIT } from './config';
 import { applyRune } from './applyRune';
 import { getCoachAdvice } from './coach';
 import { cloneState, isGoalReached } from './state';
-import type { ObjectState, Rng, RuneId, TrialSummary } from './types';
+import type { GoalOverrides, ObjectState, Rng, RuneId, TrialSummary } from './types';
 
 export interface SimulateOptions {
   rng: Rng;
   /** Prix (en kamas) de chaque rune, pour chiffrer le coût total de l'essai. */
   pricePerRune?: Partial<Record<RuneId, number>>;
+  /** Minimums visés par l'utilisateur, remplaçant les minOk par défaut. */
+  goals?: GoalOverrides;
 }
 
 /**
@@ -17,7 +19,7 @@ export interface SimulateOptions {
  * RUNE_LIMIT poses.
  */
 export function simulateTrial(initialState: ObjectState, options: SimulateOptions): TrialSummary {
-  const { rng, pricePerRune = {} } = options;
+  const { rng, pricePerRune = {}, goals } = options;
   let state: ObjectState = cloneState(initialState);
   const runeCounts: Partial<Record<RuneId, number>> = {};
   let gaPaCount = 0;
@@ -32,7 +34,7 @@ export function simulateTrial(initialState: ObjectState, options: SimulateOption
       break;
     }
 
-    const advice = getCoachAdvice(state);
+    const advice = getCoachAdvice(state, goals);
     if (advice.goalReached || !advice.rune) break;
 
     const wasPhaseB = advice.phase === 'B';
@@ -47,7 +49,7 @@ export function simulateTrial(initialState: ObjectState, options: SimulateOption
   }
 
   return {
-    success: isGoalReached(state),
+    success: isGoalReached(state, goals),
     runeCounts,
     gaPaCount,
     totalRunesPosed,

@@ -1,6 +1,6 @@
 import { createSeededRng } from '../engine/rng';
 import { simulateTrial } from '../engine/simulate';
-import type { LineValues, ObjectState, RuneId, TrialSummary } from '../engine/types';
+import type { GoalOverrides, LineValues, ObjectState, RuneId, TrialSummary } from '../engine/types';
 
 export interface SimulationRequest {
   initialValues: LineValues;
@@ -8,6 +8,7 @@ export interface SimulationRequest {
   trials: number;
   seed: number;
   pricePerRune: Partial<Record<RuneId, number>>;
+  goals?: GoalOverrides;
 }
 
 export interface SimulationAggregate {
@@ -42,7 +43,7 @@ export function runSimulation(req: SimulationRequest): SimulationAggregate {
 
   const results: TrialSummary[] = [];
   for (let i = 0; i < req.trials; i++) {
-    results.push(simulateTrial(initialState, { rng, pricePerRune: req.pricePerRune }));
+    results.push(simulateTrial(initialState, { rng, pricePerRune: req.pricePerRune, goals: req.goals }));
   }
 
   const successes = results.filter((r) => r.success).length;

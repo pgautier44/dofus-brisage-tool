@@ -1,9 +1,9 @@
 import { LINES, LINE_ORDER, PUITS_TARGET, WMAX } from '../engine/config';
 import { lineCap } from '../engine/caps';
-import { currentWeight } from '../engine/state';
-import type { ObjectState } from '../engine/types';
+import { currentWeight, effectiveMinOk } from '../engine/state';
+import type { GoalOverrides, ObjectState } from '../engine/types';
 
-export function Gauges({ state }: { state: ObjectState }) {
+export function Gauges({ state, goals }: { state: ObjectState; goals?: GoalOverrides }) {
   const weight = currentWeight(state);
 
   return (
@@ -12,24 +12,25 @@ export function Gauges({ state }: { state: ObjectState }) {
         const line = LINES[key];
         const cap = lineCap(line);
         const value = state.values[key];
+        const minOk = effectiveMinOk(key, goals);
         const span = Math.max(cap, 1);
         const pct = Math.min(100, (value / span) * 100);
-        const minOkPct = line.minOk !== null ? Math.min(100, (line.minOk / span) * 100) : null;
+        const minOkPct = minOk !== null ? Math.min(100, (minOk / span) * 100) : null;
         const maxPct = Math.min(100, (line.max / span) * 100);
-        const ok = line.minOk === null || value >= line.minOk;
+        const ok = minOk === null || value >= minOk;
         return (
           <div className={`gauge ${ok ? 'gauge-ok' : 'gauge-warn'}`} key={key}>
             <div className="gauge-label">
               <span>{line.label}</span>
               <span className="gauge-value">
                 {value}
-                {line.minOk !== null ? ` / ${line.minOk}` : ''}
+                {minOk !== null ? ` / ${minOk}` : ''}
               </span>
             </div>
             <div className="gauge-track">
               <div className="gauge-fill" style={{ width: `${pct}%` }} />
               {minOkPct !== null && (
-                <div className="gauge-marker gauge-marker-minok" style={{ left: `${minOkPct}%` }} title="minimum requis" />
+                <div className="gauge-marker gauge-marker-minok" style={{ left: `${minOkPct}%` }} title="minimum visé" />
               )}
               <div className="gauge-marker gauge-marker-max" style={{ left: `${maxPct}%` }} title="max normal (overmax au-delà)" />
             </div>

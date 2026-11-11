@@ -1,5 +1,5 @@
 import { LINES, LINE_ORDER } from './config';
-import type { LineValues, ObjectState } from './types';
+import type { GoalOverrides, LineKey, LineValues, ObjectState } from './types';
 
 export function createObjectState(values: LineValues, puits = 0): ObjectState {
   return { values: { ...values }, puits };
@@ -22,13 +22,24 @@ export function currentWeight(state: ObjectState): number {
   return w;
 }
 
-export function isGoalReached(state: ObjectState): boolean {
+/**
+ * Minimum visé pour une ligne : celui défini par l'utilisateur (`goals`) s'il existe,
+ * sinon le minOk par défaut de config.ts.
+ */
+export function effectiveMinOk(line: LineKey, goals?: GoalOverrides): number | null {
+  if (goals && Object.prototype.hasOwnProperty.call(goals, line)) {
+    return goals[line] ?? null;
+  }
+  return LINES[line].minOk;
+}
+
+export function isGoalReached(state: ObjectState, goals?: GoalOverrides): boolean {
   if (state.values.pa < 1) return false;
   for (const key of LINE_ORDER) {
-    const line = LINES[key];
-    if (line.minOk === null) continue;
     if (key === 'pa') continue;
-    if (state.values[key] < line.minOk) return false;
+    const minOk = effectiveMinOk(key, goals);
+    if (minOk === null) continue;
+    if (state.values[key] < minOk) return false;
   }
   return true;
 }

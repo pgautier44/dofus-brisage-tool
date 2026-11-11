@@ -4,12 +4,14 @@ import { getCoachAdvice } from '../engine/coach';
 import { MON_ANNEAU_HDV_VALUES, randomAnneauValues } from '../engine/config';
 import { mathRandomRng } from '../engine/rng';
 import { cloneState, isGoalReached } from '../engine/state';
-import type { CoachAdvice, LineValues, ObjectState, RuneConfig } from '../engine/types';
+import type { CoachAdvice, GoalOverrides, LineKey, LineValues, ObjectState, RuneConfig } from '../engine/types';
 import {
   JournalEntry,
   appendHistoryEntry,
   clearSession,
+  loadGoals,
   loadSession,
+  saveGoals,
   saveSession,
 } from '../storage';
 
@@ -29,13 +31,24 @@ export function useSimulatorSession() {
   const [journal, setJournal] = useState<JournalEntry[]>(() => stored?.journal ?? []);
   const [undoStack, setUndoStack] = useState<ObjectState[]>(() => stored?.undoStack ?? []);
   const [loggedGoal, setLoggedGoal] = useState(false);
+  const [goals, setGoals] = useState<GoalOverrides>(() => loadGoals());
 
   useEffect(() => {
     saveSession({ state, journal, undoStack });
   }, [state, journal, undoStack]);
 
-  const advice: CoachAdvice = useMemo(() => getCoachAdvice(state), [state]);
-  const goalReached = useMemo(() => isGoalReached(state), [state]);
+  useEffect(() => {
+    saveGoals(goals);
+  }, [goals]);
+
+  const setGoal = useCallback((line: LineKey, value: number | null) => {
+    setGoals((g) => ({ ...g, [line]: value }));
+  }, []);
+
+  const resetGoals = useCallback(() => setGoals({}), []);
+
+  const advice: CoachAdvice = useMemo(() => getCoachAdvice(state, goals), [state, goals]);
+  const goalReached = useMemo(() => isGoalReached(state, goals), [state, goals]);
 
   const poseRune = useCallback(
     (rune: RuneConfig) => {
@@ -99,6 +112,9 @@ export function useSimulatorSession() {
     advice,
     goalReached,
     journal,
+    goals,
+    setGoal,
+    resetGoals,
     canUndo: undoStack.length > 0,
     poseRune,
     undo,

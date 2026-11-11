@@ -6,6 +6,7 @@ import { EstimationTab } from './components/EstimationTab';
 import { Gauges } from './components/Gauges';
 import { HistoryTab } from './components/HistoryTab';
 import { Journal } from './components/Journal';
+import { ObjectivesPanel } from './components/ObjectivesPanel';
 import { RuneGrid } from './components/RuneGrid';
 import { useSimulatorSession } from './hooks/useSimulatorSession';
 
@@ -37,7 +38,7 @@ export function App() {
         {tab === 'entrainement' && (
           <div className="training-layout">
             <section className="sheet-column">
-              <Gauges state={session.state} />
+              <Gauges state={session.state} goals={session.goals} />
               <Controls
                 onMonAnneauHdv={session.useMonAnneauHdv}
                 onRandomRing={session.useRandomRing}
@@ -45,6 +46,7 @@ export function App() {
                 onReset={session.reset}
                 canUndo={session.canUndo}
               />
+              <ObjectivesPanel goals={session.goals} onChange={session.setGoal} onReset={session.resetGoals} />
             </section>
 
             <section className="action-column">
@@ -60,7 +62,7 @@ export function App() {
           </div>
         )}
 
-        {tab === 'estimation' && <EstimationTab currentState={session.state} />}
+        {tab === 'estimation' && <EstimationTab currentState={session.state} goals={session.goals} />}
 
         {tab === 'historique' && <HistoryTab />}
       </main>

@@ -1,9 +1,10 @@
 import { MON_ANNEAU_HDV_PRICE_DEFAULT, RUNES } from './engine/config';
-import type { LineValues, ObjectState, RuneId, RuneOutcome } from './engine/types';
+import type { GoalOverrides, LineValues, ObjectState, RuneId, RuneOutcome } from './engine/types';
 
 const SESSION_KEY = 'forgemagie:session:v1';
 const PRICES_KEY = 'forgemagie:prices:v1';
 const HISTORY_KEY = 'forgemagie:history:v1';
+const GOALS_KEY = 'forgemagie:goals:v1';
 
 export interface JournalEntry {
   id: string;
@@ -93,4 +94,12 @@ export function appendHistoryEntry(entry: HistoryEntry): HistoryEntry[] {
 
 export function clearHistory(): void {
   writeJson(HISTORY_KEY, []);
+}
+
+export function loadGoals(): GoalOverrides {
+  return readJson<GoalOverrides>(GOALS_KEY) ?? {};
+}
+
+export function saveGoals(goals: GoalOverrides): void {
+  writeJson(GOALS_KEY, goals);
 }

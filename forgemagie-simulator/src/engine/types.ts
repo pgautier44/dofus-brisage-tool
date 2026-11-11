@@ -55,6 +55,14 @@ export interface ObjectState {
   puits: number;
 }
 
+/**
+ * Minimums visés, définis par l'utilisateur, qui remplacent le minOk par défaut
+ * d'une ligne (config.ts) quand la ligne est présente dans l'objet. `null` signifie
+ * explicitement "pas d'exigence sur cette ligne". Une ligne absente de cet objet
+ * garde le minOk par défaut.
+ */
+export type GoalOverrides = Partial<Record<LineKey, number | null>>;
+
 export type RuneOutcome = 'critique' | 'neutre' | 'echec';
 
 export interface LossDetail {

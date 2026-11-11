@@ -3,7 +3,7 @@ import { LINES, MON_ANNEAU_HDV_VALUES, RUNE_BY_ID } from './config';
 import { lineCap } from './caps';
 import { applyLoss } from './loss';
 import { createSeededRng } from './rng';
-import { createObjectState } from './state';
+import { createObjectState, effectiveMinOk, isGoalReached } from './state';
 import { getCoachAdvice } from './coach';
 
 describe('plafonds (cap / PA max 1)', () => {
@@ -183,5 +183,36 @@ describe('coach : phases A et B', () => {
     expect(advice.phase).toBe('done');
     expect(advice.goalReached).toBe(true);
     expect(RUNE_BY_ID.gaPa).toBeDefined();
+  });
+});
+
+describe('objectifs définis par l\'utilisateur (goals)', () => {
+  it('sans override, effectiveMinOk renvoie le minOk par défaut de config.ts', () => {
+    expect(effectiveMinOk('cri')).toBe(LINES.cri.minOk);
+    expect(effectiveMinOk('pro')).toBeNull();
+  });
+
+  it('un override remplace le minOk par défaut, y compris pour le mettre à null', () => {
+    expect(effectiveMinOk('cri', { cri: 3 })).toBe(3);
+    expect(effectiveMinOk('vi', { vi: null })).toBeNull();
+    // une ligne absente du goals garde son minOk par défaut
+    expect(effectiveMinOk('do', { cri: 3 })).toBe(LINES.do.minOk);
+  });
+
+  it('le coach tente le Ga Pa dès que Cri/Do atteignent le minimum visé par l\'utilisateur, pas celui par défaut', () => {
+    // Do est volontairement sous le minOk par défaut (5) mais au-dessus du minimum visé (4)
+    const state = createObjectState({ ...MON_ANNEAU_HDV_VALUES, pa: 0, cri: 4, do: 4 });
+    const defaultAdvice = getCoachAdvice(state);
+    expect(defaultAdvice.rune?.id).toBe('do'); // toujours bloqué par le minOk par défaut
+
+    const customAdvice = getCoachAdvice(state, { do: 4 });
+    expect(customAdvice.rune?.id).toBe('gaPa'); // débloqué par l'objectif personnalisé
+  });
+
+  it('isGoalReached respecte les objectifs personnalisés, y compris une ligne désactivée (null)', () => {
+    const state = createObjectState({ ...MON_ANNEAU_HDV_VALUES, pa: 1, vi: 90 });
+    expect(isGoalReached(state)).toBe(false); // vi sous le minOk par défaut (115)
+    expect(isGoalReached(state, { vi: null })).toBe(true); // objectif vi désactivé
+    expect(isGoalReached(state, { vi: 95 })).toBe(false); // toujours sous l'objectif personnalisé
   });
 });

@@ -184,6 +184,49 @@ section {
   margin-top: 12px;
 }
 
+.objectives-panel {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.objectives-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.objectives-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin: 6px 0 10px;
+}
+
+.objectives-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.objective-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-alt);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.objective-row label {
+  font-size: 0.8rem;
+}
+
+.objective-row input {
+  width: 60px;
+}
+
 .coach-panel {
   border-left: 3px solid var(--gold);
   padding-left: 10px;

@@ -13,9 +13,14 @@ stocké en `localStorage`).
    des points sur une ligne au hasard, avec 25% de chance de viser le PA si les
    conditions sont réunies).
 2. Un **coach** (`src/engine/coach.ts`) suit l'objet en deux phases : tant que le
-   PA n'est pas acquis (phase A), il sécurise Cri puis Do avant de tenter le Ga Pa ;
-   une fois le PA acquis (phase B), il ne conseille plus que des runes de poids < 10
-   (jamais Cri/Do/Ga Pa), pour ne plus jamais risquer de reperdre le PA.
+   PA n'est pas acquis (phase A), il sécurise Cri puis Do avant de tenter le Ga Pa —
+   dès que ces minimums sont atteints, peu importe la probabilité (jamais > 50%,
+   c'est normal : il faut quand même tenter) ; une fois le PA acquis (phase B), il
+   ne conseille plus que des runes de poids < 10 (jamais Cri/Do/Ga Pa), pour ne plus
+   jamais risquer de reperdre le PA. Les minimums (panneau "Objectifs") sont
+   modifiables par vous : visez plus haut que les minimums par défaut si vous voulez
+   l'anneau le plus fort possible, ou désactivez une ligne (champ vide = aucune
+   exigence) si vous l'acceptez sacrifiable.
 3. L'**écran d'entraînement** affiche les jauges de l'objet, le conseil du coach, la
    grille de runes (avec raccourcis clavier) et le journal des poses ; on peut
    partir de "Mon anneau HDV" ou d'un anneau tiré au hasard, et annuler sa dernière
