@@ -8,10 +8,13 @@ interface RuneGridProps {
   state: ObjectState;
   recommendedRuneId: string | null;
   onPose: (rune: RuneConfig) => void;
+  /** true en mode "Coach en direct" : affichage informatif seul, pas de clic ni de raccourcis. */
+  readOnly?: boolean;
 }
 
-export function RuneGrid({ state, recommendedRuneId, onPose }: RuneGridProps) {
+export function RuneGrid({ state, recommendedRuneId, onPose, readOnly = false }: RuneGridProps) {
   useEffect(() => {
+    if (readOnly) return;
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
@@ -23,10 +26,10 @@ export function RuneGrid({ state, recommendedRuneId, onPose }: RuneGridProps) {
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [state, onPose]);
+  }, [state, onPose, readOnly]);
 
   return (
-    <div className="rune-grid" role="group" aria-label="Runes disponibles">
+    <div className={`rune-grid ${readOnly ? 'rune-grid-readonly' : ''}`} role="group" aria-label="Runes disponibles">
       {RUNES.map((rune) => {
         const available = isRuneAvailable(state, rune);
         const recommended = rune.id === recommendedRuneId;
@@ -43,7 +46,7 @@ export function RuneGrid({ state, recommendedRuneId, onPose }: RuneGridProps) {
             type="button"
             className={`rune-btn ${recommended ? 'rune-btn-recommended' : ''}`}
             disabled={!available}
-            onClick={() => onPose(rune)}
+            onClick={() => !readOnly && onPose(rune)}
             title={`${rune.label} — +${rune.gain} (poids ${rune.weight}) [${rune.shortcut}]`}
           >
             <span className="rune-shortcut">{rune.shortcut}</span>

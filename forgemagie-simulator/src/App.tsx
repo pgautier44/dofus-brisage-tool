@@ -6,11 +6,12 @@ import { EstimationTab } from './components/EstimationTab';
 import { Gauges } from './components/Gauges';
 import { HistoryTab } from './components/HistoryTab';
 import { Journal } from './components/Journal';
+import { LiveCoach } from './components/LiveCoach';
 import { ObjectivesPanel } from './components/ObjectivesPanel';
 import { RuneGrid } from './components/RuneGrid';
 import { useSimulatorSession } from './hooks/useSimulatorSession';
 
-type Tab = 'entrainement' | 'estimation' | 'historique';
+type Tab = 'entrainement' | 'estimation' | 'historique' | 'direct';
 
 export function App() {
   const [tab, setTab] = useState<Tab>('entrainement');
@@ -30,6 +31,9 @@ export function App() {
           </button>
           <button className={tab === 'historique' ? 'active' : ''} onClick={() => setTab('historique')}>
             Historique
+          </button>
+          <button className={tab === 'direct' ? 'active' : ''} onClick={() => setTab('direct')}>
+            Coach en direct
           </button>
         </nav>
       </header>
@@ -65,6 +69,8 @@ export function App() {
         {tab === 'estimation' && <EstimationTab currentState={session.state} goals={session.goals} />}
 
         {tab === 'historique' && <HistoryTab />}
+
+        {tab === 'direct' && <LiveCoach goals={session.goals} />}
       </main>
     </div>
   );

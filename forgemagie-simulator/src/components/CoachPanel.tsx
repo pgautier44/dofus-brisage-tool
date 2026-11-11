@@ -2,7 +2,8 @@ import type { CoachAdvice, RuneConfig } from '../engine/types';
 
 interface CoachPanelProps {
   advice: CoachAdvice;
-  onApply: (rune: RuneConfig) => void;
+  /** Omis en mode "Coach en direct" : la pose se fait réellement en jeu, pas dans l'outil. */
+  onApply?: (rune: RuneConfig) => void;
 }
 
 export function CoachPanel({ advice, onApply }: CoachPanelProps) {
@@ -17,9 +18,15 @@ export function CoachPanel({ advice, onApply }: CoachPanelProps) {
               {Math.round(advice.p * 100)}% de réussite critique
             </div>
           )}
-          <button type="button" className="coach-apply-btn" onClick={() => advice.rune && onApply(advice.rune)}>
-            Appliquer : {advice.rune.label} [{advice.rune.shortcut}]
-          </button>
+          {onApply ? (
+            <button type="button" className="coach-apply-btn" onClick={() => advice.rune && onApply(advice.rune)}>
+              Appliquer : {advice.rune.label} [{advice.rune.shortcut}]
+            </button>
+          ) : (
+            <div className="coach-apply-btn coach-apply-readonly">
+              À poser en jeu : {advice.rune.label} [{advice.rune.shortcut}]
+            </div>
+          )}
         </>
       ) : (
         <div className="coach-no-rune">

@@ -320,6 +320,155 @@ section {
   color: var(--danger);
 }
 
+.coach-apply-readonly {
+  color: var(--gold);
+  font-weight: 700;
+  border: 1px dashed var(--gold);
+  border-radius: 6px;
+  padding: 8px 14px;
+  background: transparent;
+}
+
+.rune-grid-readonly .rune-btn:not(:disabled) {
+  cursor: default;
+}
+
+.live-coach {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.live-error {
+  color: var(--danger);
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.live-video-preview {
+  margin-top: 10px;
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #000;
+}
+
+.region-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.region-chip {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.region-chip-active {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.region-chip-done {
+  background: var(--panel);
+}
+
+.region-chip-done::after {
+  content: ' ✓';
+  color: var(--ok);
+}
+
+.calibration-editor {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  user-select: none;
+  cursor: crosshair;
+}
+
+.calibration-editor img {
+  display: block;
+  width: 100%;
+  max-width: 900px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.calibration-rect {
+  position: absolute;
+  border: 2px solid var(--gold-soft);
+  background: rgba(217, 164, 65, 0.15);
+  pointer-events: none;
+}
+
+.calibration-rect-active {
+  border-color: var(--gold);
+  background: rgba(217, 164, 65, 0.3);
+}
+
+.calibration-rect-dragging {
+  border-color: var(--ok);
+  background: rgba(95, 174, 95, 0.25);
+}
+
+.calibration-rect-label {
+  position: absolute;
+  top: -18px;
+  left: 0;
+  font-size: 0.65rem;
+  color: var(--gold);
+  white-space: nowrap;
+  background: var(--bg);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.read-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.read-result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel-alt);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.read-result-row label {
+  min-width: 90px;
+  font-size: 0.8rem;
+}
+
+.read-result-row input {
+  width: 70px;
+}
+
+.read-raw-hint {
+  font-size: 0.65rem;
+  color: var(--danger);
+}
+
+.live-coaching-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .live-coaching-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .counters {
   display: flex;
   gap: 12px;

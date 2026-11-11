@@ -31,6 +31,12 @@ stocké en `localStorage`).
    nombre de Ga Pa posées.
 5. L'onglet **Historique** journalise automatiquement chaque essai mené à son
    terme (objectif atteint), avec un bouton pour tout effacer.
+6. L'onglet **Coach en direct** sert à guider l'essai réel en jeu (pas une
+   simulation) : partage ta fenêtre Dofus, calibre une fois les zones de chaque
+   ligne, puis "Lire l'écran" fait l'OCR (Tesseract.js, 100% local) et propose les
+   valeurs lues — à valider ou corriger avant que le coach les utilise. La saisie
+   manuelle reste toujours disponible en complément ou en remplacement complet de
+   la lecture d'écran.
 
 ## Lancer le projet
 
@@ -58,6 +64,28 @@ voulu (ça reflète la vraie difficulté de cette forgemagie) et pas un bug — 
 justement ce que l'onglet Estimation permet de quantifier avant de se lancer pour
 de vrai.
 
+## Coach en direct : le partage d'écran en pratique
+
+- Le partage d'écran (`getDisplayMedia`) n'est autorisé par les navigateurs qu'en
+  contexte sécurisé — `localhost` convient (donc `npm run dev`/`preview` sans
+  problème), mais pas un accès par IP en HTTP simple.
+- **Calibrage** : capture une image fixe, choisis une ligne dans la liste de puces,
+  puis dessine un rectangle serré autour du nombre affiché par Dofus pour cette
+  ligne (pas besoin d'inclure le "/max"). Chaque zone est mémorisée en
+  `localStorage` et reste valable tant que la fenêtre du jeu garde la même
+  position à l'écran — redessine juste la ou les zones concernées si tu la
+  déplaces ou changes de résolution.
+- **Lire l'écran** découpe chaque zone calibrée sur l'image du moment et lance
+  Tesseract.js (OCR 100% local, aucun envoi réseau) dessus. Si le jeu affiche un
+  format "valeur/max" (ex: `39/40`), seule la valeur avant le `/` est gardée.
+- Les valeurs lues s'affichent dans des champs éditables **avant** validation :
+  corrige toute erreur de lecture avant de cliquer "Valider ces valeurs".
+- Le panneau "Saisie / correction manuelle" est toujours visible, indépendamment
+  de la lecture d'écran : tu peux t'en servir seul (sans jamais partager l'écran),
+  ou pour corriger une ligne après une lecture OCR ratée.
+- L'OCR peut se tromper sur de petits caractères stylisés ; vise une zone bien
+  cadrée, en zoomant l'interface du jeu si besoin pour des caractères plus grands.
+
 ## Structure
 
 ```
@@ -66,7 +94,8 @@ src/
                  probabilités, perte, pose de rune, coach, simulation d'essai
   engine/engine.test.ts   tests Vitest du moteur
   worker/        Web Worker pour la simulation de masse (Estimation)
+  screen/        capture d'écran + OCR (Tesseract.js) pour le Coach en direct
   components/    composants React de l'interface
-  hooks/         état de session (poses, annuler, persistance)
-  storage.ts     lecture/écriture localStorage (session, prix, historique)
+  hooks/         état de session (poses, annuler, persistance) + état du Coach en direct
+  storage.ts     lecture/écriture localStorage (session, prix, historique, objectifs, calibrage)
 ```
