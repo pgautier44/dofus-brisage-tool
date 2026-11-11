@@ -89,6 +89,8 @@ export interface CoachAdvice {
   /** null si aucune rune à conseiller (ex: "Accepte ou risque le PA", ou objectif atteint) */
   rune: RuneConfig | null;
   reason: string;
+  /** probabilité de succès critique de la rune conseillée ; null si rune est null */
+  p: number | null;
   /** true quand l'objectif est atteint et que l'essai doit s'arrêter */
   goalReached: boolean;
 }

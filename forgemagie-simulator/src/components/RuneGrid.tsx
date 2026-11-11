@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { RUNES } from '../engine/config';
 import { isRuneAvailable } from '../engine/caps';
+import { calcSuccessProbability } from '../engine/probability';
 import type { ObjectState, RuneConfig } from '../engine/types';
 
 interface RuneGridProps {
@@ -29,6 +30,13 @@ export function RuneGrid({ state, recommendedRuneId, onPose }: RuneGridProps) {
       {RUNES.map((rune) => {
         const available = isRuneAvailable(state, rune);
         const recommended = rune.id === recommendedRuneId;
+        const lockedReason =
+          !available && rune.id === 'gaPa' && state.values.pa > 0
+            ? 'PA déjà acquis'
+            : !available
+              ? 'Plafond atteint'
+              : null;
+        const p = calcSuccessProbability(state, rune);
         return (
           <button
             key={rune.id}
@@ -42,6 +50,9 @@ export function RuneGrid({ state, recommendedRuneId, onPose }: RuneGridProps) {
             <span className="rune-name">{rune.label}</span>
             <span className="rune-meta">
               +{rune.gain} · poids {rune.weight}
+            </span>
+            <span className={`rune-proba ${available && p >= 0.5 ? 'rune-proba-good' : ''}`}>
+              {available ? `${Math.round(p * 100)}% de réussite` : lockedReason}
             </span>
           </button>
         );

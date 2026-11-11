@@ -1,5 +1,6 @@
 import { LINES, RUNE_BY_ID, RUNES } from './config';
 import { isRuneAvailable } from './caps';
+import { calcSuccessProbability } from './probability';
 import { isGoalReached } from './state';
 import type { CoachAdvice, LineKey, ObjectState, RuneConfig } from './types';
 
@@ -17,6 +18,17 @@ function bestAvailableRune(state: ObjectState, candidates: RuneConfig[]): RuneCo
   return available.reduce((best, r) => (r.gain > best.gain ? r : best));
 }
 
+function advise(
+  state: ObjectState,
+  phase: CoachAdvice['phase'],
+  rune: RuneConfig | null,
+  reason: string,
+  goalReached = false
+): CoachAdvice {
+  const p = rune ? calcSuccessProbability(state, rune) : null;
+  return { phase, rune, reason, p, goalReached };
+}
+
 /**
  * Conseil du coach, en deux phases :
  * - Phase A (PA == 0) : priorité Cri (si < 4), sinon Do (si < 5), sinon Ga Pa.
@@ -28,22 +40,22 @@ function bestAvailableRune(state: ObjectState, candidates: RuneConfig[]): RuneCo
 export function getCoachAdvice(state: ObjectState): CoachAdvice {
   if (state.values.pa === 0) {
     if (state.values.cri < LINES.cri.minOk!) {
-      return { phase: 'A', rune: RUNE_BY_ID.cri, reason: 'Critique sous le minimum : on sécurise le Cri avant tout.', goalReached: false };
+      return advise(state, 'A', RUNE_BY_ID.cri, 'Critique sous le minimum : on sécurise le Cri avant tout.');
     }
     if (state.values.do < LINES.do.minOk!) {
-      return { phase: 'A', rune: RUNE_BY_ID.do, reason: 'Dommages sous le minimum : on sécurise le Do avant le PA.', goalReached: false };
+      return advise(state, 'A', RUNE_BY_ID.do, 'Dommages sous le minimum : on sécurise le Do avant le PA.');
     }
-    return { phase: 'A', rune: RUNE_BY_ID.gaPa, reason: 'Cri et Do sont bons : on tente le Ga Pa.', goalReached: false };
+    return advise(state, 'A', RUNE_BY_ID.gaPa, 'Cri et Do sont bons : on tente le Ga Pa.');
   }
 
   // Phase B : le PA est acquis, on ne le remet plus en jeu avec des runes lourdes.
   if (state.values.cri < LINES.cri.minOk! || state.values.do < LINES.do.minOk!) {
-    return {
-      phase: 'B',
-      rune: null,
-      reason: 'Accepte ou risque le PA : remonter Cri/Do demanderait une rune lourde (poids ≥ 10).',
-      goalReached: false,
-    };
+    return advise(
+      state,
+      'B',
+      null,
+      'Accepte ou risque le PA : remonter Cri/Do demanderait une rune lourde (poids ≥ 10).'
+    );
   }
 
   for (const line of PHASE_B_PRIORITY) {
@@ -52,13 +64,13 @@ export function getCoachAdvice(state: ObjectState): CoachAdvice {
     if (state.values[line] >= minOk) continue;
     const rune = bestAvailableRune(state, phaseBCandidateRunes(line));
     if (rune) {
-      return { phase: 'B', rune, reason: `${LINES[line].label} sous le minimum : on complète en restant sous 10 de poids.`, goalReached: false };
+      return advise(state, 'B', rune, `${LINES[line].label} sous le minimum : on complète en restant sous 10 de poids.`);
     }
   }
 
   if (isGoalReached(state)) {
-    return { phase: 'done', rune: null, reason: 'Objectif atteint, arrête-toi.', goalReached: true };
+    return advise(state, 'done', null, 'Objectif atteint, arrête-toi.', true);
   }
 
-  return { phase: 'B', rune: null, reason: 'Plus aucune rune sûre disponible.', goalReached: false };
+  return advise(state, 'B', null, 'Plus aucune rune sûre disponible.');
 }

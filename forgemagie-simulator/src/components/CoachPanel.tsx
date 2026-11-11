@@ -11,9 +11,16 @@ export function CoachPanel({ advice, onApply }: CoachPanelProps) {
       <div className="coach-phase-badge">Phase {advice.phase === 'done' ? '✓' : advice.phase}</div>
       <div className="coach-reason">{advice.reason}</div>
       {advice.rune ? (
-        <button type="button" className="coach-apply-btn" onClick={() => advice.rune && onApply(advice.rune)}>
-          Appliquer : {advice.rune.label} [{advice.rune.shortcut}]
-        </button>
+        <>
+          {advice.p !== null && (
+            <div className={`coach-proba ${advice.p >= 0.5 ? 'coach-proba-good' : advice.p < 0.1 ? 'coach-proba-bad' : ''}`}>
+              {Math.round(advice.p * 100)}% de réussite critique
+            </div>
+          )}
+          <button type="button" className="coach-apply-btn" onClick={() => advice.rune && onApply(advice.rune)}>
+            Appliquer : {advice.rune.label} [{advice.rune.shortcut}]
+          </button>
+        </>
       ) : (
         <div className="coach-no-rune">
           {advice.goalReached ? '🏆 Objectif atteint, arrête-toi.' : 'Aucune pose sûre à conseiller.'}

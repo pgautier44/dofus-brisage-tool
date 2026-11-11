@@ -129,6 +129,21 @@ describe('coach : phases A et B', () => {
     expect(advice.rune?.id).toBe('gaPa');
   });
 
+  it('le conseil expose toujours la probabilité de réussite de la rune conseillée', () => {
+    const state = createObjectState({ ...MON_ANNEAU_HDV_VALUES, pa: 0, cri: 4, do: 5 });
+    const advice = getCoachAdvice(state);
+    expect(advice.p).not.toBeNull();
+    expect(advice.p).toBeGreaterThanOrEqual(0.03);
+    expect(advice.p).toBeLessThanOrEqual(0.95);
+  });
+
+  it('p est null quand aucune rune n\'est conseillée', () => {
+    const state = createObjectState({ ...MON_ANNEAU_HDV_VALUES, pa: 1, cri: 2 });
+    const advice = getCoachAdvice(state);
+    expect(advice.rune).toBeNull();
+    expect(advice.p).toBeNull();
+  });
+
   it('phase B, ne conseille jamais Cri, Do ou Ga Pa', () => {
     const state = createObjectState({
       ...MON_ANNEAU_HDV_VALUES,

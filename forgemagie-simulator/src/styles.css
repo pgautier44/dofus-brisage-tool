@@ -251,6 +251,32 @@ section {
   color: var(--text-dim);
 }
 
+.rune-proba {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--danger);
+  margin-top: 2px;
+}
+
+.rune-proba-good {
+  color: var(--ok);
+}
+
+.coach-proba {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--danger);
+  margin-bottom: 8px;
+}
+
+.coach-proba-good {
+  color: var(--ok);
+}
+
+.coach-proba-bad {
+  color: var(--danger);
+}
+
 .counters {
   display: flex;
   gap: 12px;
