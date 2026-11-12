@@ -133,6 +133,40 @@ main {
   border-bottom-color: var(--panel);
 }
 
+/* Le simulateur de forgemagie n'est pas une page de craft comme les autres : accès
+   délibérément séparé de la rangée d'onglets, avec sa propre couleur (violet/mystique),
+   pour ne pas donner l'impression que c'est "encore un métier" de plus. */
+.other-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.other-tools-label {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.other-tool-btn {
+  background: #efe7fb;
+  color: #5a3d99;
+  border: 1px solid #c9b3ec;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+.other-tool-btn:hover { background: #e4d6f9; color: #46307a; }
+.other-tool-btn.active {
+  background: #5a3d99;
+  color: #fff;
+  border-color: #5a3d99;
+}
+
 body.loading main { opacity: 0.5; pointer-events: none; transition: opacity 0.15s; }
 
 button {
