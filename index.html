@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20261112b">
+<link rel="stylesheet" href="style.css?v=20261112c">
 </head>
 <body class="loading">
 <header>
@@ -35,6 +35,7 @@
     <button type="button" class="tab-btn" data-tab="alchimiste" role="tab" aria-selected="false">Alchimiste</button>
     <button type="button" class="tab-btn" data-tab="faconneur" role="tab" aria-selected="false">Façonneur</button>
     <button type="button" class="tab-btn" data-tab="faconneurtiti" role="tab" aria-selected="false">Façonneur Titi</button>
+    <button type="button" class="tab-btn" data-tab="forgemagie" role="tab" aria-selected="false">Forgemagie</button>
   </div>
 
   <section class="card legacy-banner hidden" id="legacy-import-banner">
@@ -652,6 +653,19 @@
     <p class="hint">Tant qu'un objet n'est pas vendu, son prix d'achat compte en négatif (capital immobilisé) ; une fois vendu, c'est le gain réel (vente − achat) qui compte.</p>
   </section>
 
+  <section class="card hidden forgemagie-section" id="forgemagie-section" data-tab-panel="forgemagie">
+    <p class="hint">
+      Simulateur et coach d'entraînement à la forgemagie (exo PA) — outil indépendant, ses
+      données (anneau suivi, objectifs, historique) sont séparées de celles du brisage.
+      <a href="forge/index.html" target="_blank" rel="noopener">Ouvrir dans un onglet à part ↗</a>
+    </p>
+    <iframe
+      src="forge/index.html"
+      title="Simulateur de forgemagie"
+      class="forgemagie-frame"
+      loading="lazy"
+    ></iframe>
+  </section>
 
 </main>
 
@@ -873,6 +887,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20261112b"></script>
+<script src="app.js?v=20261112c"></script>
 </body>
 </html>

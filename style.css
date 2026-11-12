@@ -58,6 +58,22 @@ main {
 #items-section { border-top-color: var(--accent); }
 #jewelry-section { border-top-color: var(--rel-rentable); }
 
+.forgemagie-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.forgemagie-frame {
+  width: 100%;
+  height: 85vh;
+  min-height: 640px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #1a140f;
+}
+
 .totals-bar {
   display: flex;
   flex-wrap: wrap;
