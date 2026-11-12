@@ -11,7 +11,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // blocks saving while stale (see doSaveData()'s comment: that caused its own, worse data
 // loss on 2026-11-12). The actual safety net against a stale tab clobbering data is
 // mergeStateForSave(), not this version check.
-const APP_VERSION = '20261112d';
+const APP_VERSION = '20261112e';
 
 async function isVersionStale() {
   try {
@@ -1577,9 +1577,26 @@ function render() {
 
 const LEGACY_STORAGE_KEY = 'dofusBrisageData';
 
+// Fusionne deux tableaux (par id) en préférant, quand les DEUX côtés ont le même id, la
+// version la plus récente (updatedAt) plutôt que systématiquement la locale : un onglet A
+// qui vient de modifier un objet, suivi d'un onglet B tournant une copie plus ancienne de
+// CE MÊME objet qui sauvegarde pour une tout autre raison, ne doit pas silencieusement
+// écraser la modif de A avec sa copie périmée — constaté le 2026-11-12 ("Dernière
+// modification" revenue en arrière après l'ajout d'un nouvel achat). Pour les tableaux
+// sans updatedAt (ex: les achats/ventes), le comportement historique (local gagne) reste
+// inchangé, faute d'un moyen fiable de dire lequel est le plus récent.
 function mergeById(baseArr, incomingArr) {
-  const existingIds = new Set(baseArr.map((x) => x.id));
-  return [...baseArr, ...incomingArr.filter((x) => !existingIds.has(x.id))];
+  const incomingById = new Map(incomingArr.map((x) => [x.id, x]));
+  const merged = baseArr.map((localItem) => {
+    const remoteItem = incomingById.get(localItem.id);
+    if (remoteItem === undefined) return localItem;
+    incomingById.delete(localItem.id);
+    if (localItem.updatedAt && remoteItem.updatedAt) {
+      return remoteItem.updatedAt > localItem.updatedAt ? remoteItem : localItem;
+    }
+    return localItem;
+  });
+  return [...merged, ...incomingById.values()];
 }
 
 function readLegacyData() {
