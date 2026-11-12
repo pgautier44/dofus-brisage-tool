@@ -7,10 +7,11 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // style.css/app.js tags. An onglet left open across a deploy keeps running this exact
 // (now stale) copy of app.js in memory — reloading index.html doesn't help an already-open
 // tab. checkForNewVersion() periodically compares this against version.txt (never cached)
-// to catch that case and warn before a stale save can silently drop data (see the
-// "Dernière modification"/Façonneur incident on 2026-10-13: a tab open since before the
-// Alchimiste/Façonneur pages existed wiped those keys with its old, pre-merge saveData()).
-const APP_VERSION = '20261102a';
+// to nudge a stale tab to reload onto the latest code (new features/fixes) — it no longer
+// blocks saving while stale (see doSaveData()'s comment: that caused its own, worse data
+// loss on 2026-11-12). The actual safety net against a stale tab clobbering data is
+// mergeStateForSave(), not this version check.
+const APP_VERSION = '20261112a';
 
 async function isVersionStale() {
   try {
@@ -28,8 +29,8 @@ async function isVersionStale() {
 
 // Un rechargement sans prévenir perdrait un formulaire en cours de remplissage (nom/prix
 // pas encore validé) — on ne recharge donc automatiquement que quand rien de tel n'est
-// ouvert. Sinon on retente au prochain passage (toutes les 5 min) ; d'ici là, saveData()
-// bloque de toute façon toute sauvegarde périmée (voir doSaveData()).
+// ouvert. Sinon on retente au prochain passage (toutes les 5 min) ; ça ne coûte rien
+// d'attendre, puisque les sauvegardes continuent de fonctionner normalement entre-temps.
 function hasOpenEditingUI() {
   if (document.querySelectorAll('.panel:not(.hidden)').length > 0) return true;
   if (document.querySelectorAll(
@@ -194,16 +195,18 @@ function saveData() {
 }
 
 async function doSaveData() {
-  // Verrou dur, pas juste un bandeau : un onglet tournant une version périmée de l'outil
-  // ne doit JAMAIS pouvoir écrire sur le serveur (c'est exactement ce qui a effacé
-  // faconneurItems/alchimisteItems/deletedIds le 2026-10-12 — un onglet resté ouvert avec
-  // l'ancien code, dont la sauvegarde ne savait même pas que ces clés existaient). On
-  // vérifie à CHAQUE sauvegarde, pas seulement au chargement, pour attraper le cas d'un
-  // onglet resté ouvert pendant qu'un nouveau déploiement sort.
+  // On a bloqué ici, dur, toute sauvegarde périmée entre le 2026-11-02 et le 2026-11-12.
+  // Erreur : mergeStateForSave() fusionne déjà SANS RISQUE (ajouts/suppressions du serveur
+  // préservés, modifications locales conservées) dès qu'un onglet connaît toutes les clés
+  // actuelles — ce qui est le cas de tout onglet chargé depuis le correctif du 2026-10-08,
+  // bien avant que la péremption ait quoi que ce soit à voir. Bloquer quand même a fini par
+  // perdre plusieurs JOURS de saisie en silence chez un onglet resté ouvert et périmé (la
+  // seule alerte visible était un popup ponctuel, facile à fermer sans réaliser que PLUS
+  // RIEN ne s'enregistrerait ensuite) — un dégât bien pire que celui qu'on voulait éviter.
+  // On se contente donc à nouveau de signaler qu'une version plus récente existe (bandeau),
+  // sans empêcher la fusion/écriture d'avoir lieu.
   if (await isVersionStale()) {
     document.getElementById('update-available-banner').classList.remove('hidden');
-    showAlert("Ce changement n'a PAS été enregistré : cet onglet tourne une version périmée de l'outil. Recharge la page (Ctrl+Maj+R) puis réessaie.");
-    return;
   }
 
   const { data: remoteRow, error: fetchError } = await fetchRemoteData();
