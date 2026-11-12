@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Outil de Brisage - Dofus</title>
-<link rel="stylesheet" href="style.css?v=20261112a">
+<link rel="stylesheet" href="style.css?v=20261112b">
 </head>
 <body class="loading">
 <header>
@@ -43,6 +43,15 @@
     <div class="form-actions">
       <button type="button" id="import-legacy-btn" class="primary-btn">Importer ces données</button>
       <button type="button" id="dismiss-legacy-btn" class="cancel-btn">Ignorer</button>
+    </div>
+  </section>
+
+  <section class="card legacy-banner hidden" id="local-mirror-banner">
+    <h2>Copie locale différente de ce qui est affiché</h2>
+    <p class="hint" id="local-mirror-hint">Ce navigateur a gardé une copie de tes données datant du <span id="local-mirror-date">—</span>, différente de ce qui vient d'être chargé depuis le serveur (par exemple si une sauvegarde avait échoué). Tu peux la fusionner sans rien écraser (elle complète ce qui est affiché, ça ne supprime rien), ou l'ignorer si tu es sûr·e qu'elle n'a rien de plus récent.</p>
+    <div class="form-actions">
+      <button type="button" id="merge-local-mirror-btn" class="primary-btn">Fusionner cette copie locale</button>
+      <button type="button" id="dismiss-local-mirror-btn" class="cancel-btn">Ignorer</button>
     </div>
   </section>
 
@@ -864,6 +873,6 @@
 
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=20261112a"></script>
+<script src="app.js?v=20261112b"></script>
 </body>
 </html>

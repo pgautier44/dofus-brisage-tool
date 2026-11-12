@@ -11,7 +11,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // blocks saving while stale (see doSaveData()'s comment: that caused its own, worse data
 // loss on 2026-11-12). The actual safety net against a stale tab clobbering data is
 // mergeStateForSave(), not this version check.
-const APP_VERSION = '20261112a';
+const APP_VERSION = '20261112b';
 
 async function isVersionStale() {
   try {
@@ -184,11 +184,37 @@ function markDeleted(ids) {
   });
 }
 
+// Filet de sécurité indépendant du serveur : une copie de state.data est gardée dans CE
+// navigateur à chaque tentative de sauvegarde, avant même d'essayer d'écrire sur Supabase.
+// Si un futur bug empêche l'écriture serveur (réseau, bug de fusion, etc.), les données
+// saisies restent donc récupérables depuis ce navigateur plutôt que perdues avec l'onglet —
+// voir checkLocalMirror() qui propose de la fusionner si elle diffère au chargement suivant.
+const LOCAL_MIRROR_KEY = 'dofusBrisageLocalMirror';
+
+function saveLocalMirror() {
+  try {
+    localStorage.setItem(LOCAL_MIRROR_KEY, JSON.stringify({ data: state.data, savedAt: new Date().toISOString() }));
+  } catch (e) {
+    // quota dépassé / navigation privée : tant pis, c'est une protection en plus parmi
+    // d'autres (fusion serveur, export manuel), pas la seule.
+  }
+}
+
+function readLocalMirror() {
+  try {
+    const raw = localStorage.getItem(LOCAL_MIRROR_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Les sauvegardes sont mises en file pour qu'une sauvegarde ne démarre jamais sa fusion
 // avant que la précédente (dans cet onglet) ait fini d'écrire state.data.
 let saveChain = Promise.resolve();
 
 function saveData() {
+  saveLocalMirror();
   const chain = saveChain.then(doSaveData);
   saveChain = chain.catch(() => {});
   return chain;
@@ -222,7 +248,12 @@ async function doSaveData() {
   if (error) {
     console.error('Impossible de sauvegarder les données', error);
     showAlert("Erreur : impossible d'enregistrer les données sur le serveur. Vérifie ta connexion internet — ce changement n'a pas été sauvegardé.");
+    return;
   }
+
+  // La fusion ci-dessus a pu enrichir state.data (ajouts côté serveur) : on rafraîchit la
+  // copie locale pour qu'elle reflète ce qui vient d'être confirmé écrit avec succès.
+  saveLocalMirror();
 }
 
 // ---------- Custom modal (native confirm/alert are unreliable in sandboxed embeds) ----------
@@ -1575,6 +1606,31 @@ function checkLegacyData() {
   }
 }
 
+// ---------- Copie locale (filet de sécurité, voir saveLocalMirror()) ----------
+
+// Comparaison stable (clés triées) pour ne pas signaler une différence qui n'en est pas
+// une à cause du simple ordre des clés entre deux objets par ailleurs identiques.
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function checkLocalMirror() {
+  const mirror = readLocalMirror();
+  if (!mirror || !mirror.data) return;
+  if (stableStringify(mirror.data) === stableStringify(state.data)) return;
+
+  const dateEl = document.getElementById('local-mirror-date');
+  if (dateEl) {
+    dateEl.textContent = mirror.savedAt ? new Date(mirror.savedAt).toLocaleString('fr-FR') : 'date inconnue';
+  }
+  document.getElementById('local-mirror-banner').classList.remove('hidden');
+}
+
 document.getElementById('import-legacy-btn').addEventListener('click', async () => {
   const legacy = readLegacyData();
   if (!legacy) return;
@@ -1595,6 +1651,24 @@ document.getElementById('import-legacy-btn').addEventListener('click', async () 
 
 document.getElementById('dismiss-legacy-btn').addEventListener('click', () => {
   document.getElementById('legacy-import-banner').classList.add('hidden');
+});
+
+document.getElementById('merge-local-mirror-btn').addEventListener('click', async () => {
+  const mirror = readLocalMirror();
+  if (!mirror || !mirror.data) return;
+  const btn = document.getElementById('merge-local-mirror-btn');
+  btn.disabled = true;
+  // Même logique de fusion sans perte que pour le serveur (ajouts conservés des deux
+  // côtés, la copie locale l'emporte en cas de conflit sur un même id).
+  state.data = mergeStateForSave(mirror.data, state.data);
+  await saveData();
+  document.getElementById('local-mirror-banner').classList.add('hidden');
+  render();
+  btn.disabled = false;
+});
+
+document.getElementById('dismiss-local-mirror-btn').addEventListener('click', () => {
+  document.getElementById('local-mirror-banner').classList.add('hidden');
 });
 
 document.getElementById('reload-for-update-btn').addEventListener('click', () => {
@@ -1631,6 +1705,7 @@ async function init() {
     }
   } catch (e) { /* stockage indisponible, tant pis — on garde l'onglet par défaut */ }
   checkLegacyData();
+  checkLocalMirror();
   checkForNewVersion();
   setInterval(checkForNewVersion, VERSION_CHECK_INTERVAL_MS);
 }
