@@ -11,7 +11,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // blocks saving while stale (see doSaveData()'s comment: that caused its own, worse data
 // loss on 2026-11-12). The actual safety net against a stale tab clobbering data is
 // mergeStateForSave(), not this version check.
-const APP_VERSION = '20261112e';
+const APP_VERSION = '20261114a';
 
 async function isVersionStale() {
   try {
@@ -729,6 +729,11 @@ function createFlipPage(cfg) {
       if (cfg.opportunityFirstKey && state[cfg.opportunityFirstKey]) {
         opportunityRows = activeRows.filter(({ stats }) => isOpportunityStats(stats));
         activeRows = activeRows.filter(({ stats }) => !isOpportunityStats(stats));
+        // Parmi les objets "à relancer", ceux qui ne sont pas marqués "craft trop cher"
+        // passent en premier (on peut les relancer tout de suite), puis les autres —
+        // peu importe le tri choisi par ailleurs, qui reste le tri secondaire à
+        // l'intérieur de chacun des deux groupes (tri stable).
+        opportunityRows.sort((a, b) => Number(a.item.craftTooExpensive) - Number(b.item.craftTooExpensive));
       }
 
       let html = '';
