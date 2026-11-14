@@ -14,8 +14,11 @@ export function CoachPanel({ advice, onApply }: CoachPanelProps) {
       {advice.rune ? (
         <>
           {advice.p !== null && (
-            <div className={`coach-proba ${advice.p >= 0.5 ? 'coach-proba-good' : advice.p < 0.1 ? 'coach-proba-bad' : ''}`}>
+            <div className={`coach-proba ${advice.p >= 0.5 ? 'coach-proba-good' : ''}`}>
               {Math.round(advice.p * 100)}% de réussite critique
+              {advice.rune?.id === 'gaPa' && (
+                <span className="coach-proba-note"> — normal que ce soit bas, tente quand même</span>
+              )}
             </div>
           )}
           {onApply ? (

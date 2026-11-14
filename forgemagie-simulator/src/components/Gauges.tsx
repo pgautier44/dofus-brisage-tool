@@ -3,12 +3,39 @@ import { lineCap } from '../engine/caps';
 import { currentWeight, effectiveMinOk } from '../engine/state';
 import type { GoalOverrides, ObjectState } from '../engine/types';
 
+const NON_PA_LINES = LINE_ORDER.filter((k) => k !== 'pa');
+
 export function Gauges({ state, goals }: { state: ObjectState; goals?: GoalOverrides }) {
   const weight = currentWeight(state);
+  const hasPa = state.values.pa > 0;
+
+  const lineStatuses = NON_PA_LINES.map((key) => {
+    const minOk = effectiveMinOk(key, goals);
+    return minOk === null || state.values[key] >= minOk;
+  });
+  const metCount = lineStatuses.filter(Boolean).length;
 
   return (
     <div className="gauges">
-      {LINE_ORDER.map((key) => {
+      <div className="gauges-header">
+        <h3>Ton anneau actuel</h3>
+        <p className="objectives-hint">
+          Objectif : obtenir le PA (exo), puis amener chaque ligne à son minimum visé (✓). Le ○ gris
+          indique une ligne pas encore au niveau — pas grave tant que ce n'est pas une des lignes
+          obligatoires.
+        </p>
+      </div>
+
+      <div className={`pa-status ${hasPa ? 'pa-status-done' : 'pa-status-pending'}`}>
+        <span className="pa-status-icon">{hasPa ? '✅' : '❌'}</span>
+        <span>PA (exo) : {hasPa ? 'obtenu' : 'pas encore obtenu — priorité n°1'}</span>
+      </div>
+
+      <div className="gauges-progress">
+        {metCount} / {lineStatuses.length} lignes au minimum visé
+      </div>
+
+      {NON_PA_LINES.map((key) => {
         const line = LINES[key];
         const cap = lineCap(line);
         const value = state.values[key];
@@ -21,10 +48,12 @@ export function Gauges({ state, goals }: { state: ObjectState; goals?: GoalOverr
         return (
           <div className={`gauge ${ok ? 'gauge-ok' : 'gauge-warn'}`} key={key}>
             <div className="gauge-label">
-              <span>{line.label}</span>
+              <span className="gauge-name">
+                <span className="gauge-status-icon">{ok ? '✓' : '○'}</span> {line.label}
+              </span>
               <span className="gauge-value">
                 {value}
-                {minOk !== null ? ` / ${minOk}` : ''}
+                {minOk !== null && <span className="gauge-target"> · objectif {minOk}</span>}
               </span>
             </div>
             <div className="gauge-track">

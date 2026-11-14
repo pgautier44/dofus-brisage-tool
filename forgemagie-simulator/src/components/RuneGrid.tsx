@@ -49,12 +49,13 @@ export function RuneGrid({ state, recommendedRuneId, onPose, readOnly = false }:
             onClick={() => !readOnly && onPose(rune)}
             title={`${rune.label} — +${rune.gain} (poids ${rune.weight}) [${rune.shortcut}]`}
           >
+            {recommended && <span className="rune-recommended-badge">⭐ Conseillée</span>}
             <span className="rune-shortcut">{rune.shortcut}</span>
             <span className="rune-name">{rune.label}</span>
             <span className="rune-meta">
               +{rune.gain} · poids {rune.weight}
             </span>
-            <span className={`rune-proba ${available && p >= 0.5 ? 'rune-proba-good' : ''}`}>
+            <span className="rune-proba">
               {available ? `${Math.round(p * 100)}% de réussite` : lockedReason}
             </span>
           </button>

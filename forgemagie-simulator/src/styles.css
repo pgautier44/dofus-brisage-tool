@@ -124,6 +124,47 @@ section {
   gap: 8px;
 }
 
+.gauges-header h3 {
+  margin: 0 0 4px;
+  color: var(--gold);
+}
+
+.gauges-header .objectives-hint {
+  margin: 0 0 12px;
+}
+
+.pa-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.pa-status-icon {
+  font-size: 1.2rem;
+}
+
+.pa-status-pending {
+  background: rgba(196, 82, 59, 0.18);
+  color: #e68a73;
+  border: 1px solid var(--danger);
+}
+
+.pa-status-done {
+  background: rgba(95, 174, 95, 0.18);
+  color: #8fd28f;
+  border: 1px solid var(--ok);
+}
+
+.gauges-progress {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
 .gauge-label {
   display: flex;
   justify-content: space-between;
@@ -131,8 +172,31 @@ section {
   margin-bottom: 2px;
 }
 
+.gauge-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gauge-status-icon {
+  font-size: 0.75rem;
+}
+
+.gauge-ok .gauge-status-icon {
+  color: var(--ok);
+}
+
+.gauge-warn .gauge-status-icon {
+  color: var(--text-dim);
+}
+
 .gauge-value {
   color: var(--text-dim);
+}
+
+.gauge-target {
+  color: var(--text-dim);
+  font-size: 0.8em;
 }
 
 .gauge-track {
@@ -253,6 +317,22 @@ section {
   color: var(--gold);
 }
 
+.rune-grid-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin: 0 0 10px;
+}
+
+.rune-grid-hint-badge {
+  display: inline-block;
+  background: var(--gold);
+  color: #1a140f;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
 .rune-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -271,7 +351,22 @@ section {
 
 .rune-btn-recommended {
   border-color: var(--gold);
-  box-shadow: 0 0 0 1px var(--gold) inset;
+  background: linear-gradient(135deg, rgba(217, 164, 65, 0.28), rgba(217, 164, 65, 0.12));
+  box-shadow: 0 0 0 2px var(--gold) inset;
+  margin-top: 10px;
+}
+
+.rune-recommended-badge {
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  background: var(--gold);
+  color: #1a140f;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
 }
 
 .rune-shortcut {
@@ -297,8 +392,12 @@ section {
 .rune-proba {
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--danger);
+  color: var(--text-dim);
   margin-top: 2px;
+}
+
+.rune-btn-recommended .rune-proba {
+  color: var(--gold);
 }
 
 .rune-proba-good {
@@ -308,7 +407,7 @@ section {
 .coach-proba {
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--danger);
+  color: var(--gold);
   margin-bottom: 8px;
 }
 
@@ -316,8 +415,10 @@ section {
   color: var(--ok);
 }
 
-.coach-proba-bad {
-  color: var(--danger);
+.coach-proba-note {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-dim);
 }
 
 .coach-apply-readonly {

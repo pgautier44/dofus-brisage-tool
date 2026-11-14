@@ -250,7 +250,6 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
 
       <div className="live-coaching-layout">
         <section className="sheet-column">
-          <h3>Objet suivi</h3>
           <Gauges state={liveCoach.state} goals={goals} />
           <ManualValuesPanel
             state={liveCoach.state}

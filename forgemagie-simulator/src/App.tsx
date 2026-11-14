@@ -54,13 +54,18 @@ export function App() {
             </section>
 
             <section className="action-column">
+              <h3>Coach : quoi poser maintenant</h3>
               <CoachPanel advice={session.advice} onApply={session.poseRune} />
+              <p className="rune-grid-hint">
+                Toutes les runes et leur % de réussite, pour référence — la rune encadrée en doré{' '}
+                <span className="rune-grid-hint-badge">⭐ Conseillée</span> est celle à poser.
+              </p>
               <RuneGrid state={session.state} recommendedRuneId={session.advice.rune?.id ?? null} onPose={session.poseRune} />
               <Counters journal={session.journal} />
             </section>
 
             <section className="journal-column">
-              <h3>Journal</h3>
+              <h3>Journal des poses</h3>
               <Journal entries={session.journal} />
             </section>
           </div>
