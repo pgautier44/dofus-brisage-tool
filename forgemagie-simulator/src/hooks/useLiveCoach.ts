@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getCoachAdvice } from '../engine/coach';
 import { MON_ANNEAU_HDV_VALUES } from '../engine/config';
 import { isGoalReached } from '../engine/state';
-import type { CoachStrategy, GoalOverrides, LineKey, LineValues, ObjectState } from '../engine/types';
-import { loadStrategy, saveStrategy } from '../storage';
+import type { GoalOverrides, LineKey, LineValues, ObjectState } from '../engine/types';
 
 const LIVE_STATE_KEY = 'forgemagie:live-state:v1';
 
@@ -35,18 +34,12 @@ function makeInitialState(): ObjectState {
  */
 export function useLiveCoach(goals: GoalOverrides) {
   const [state, setState] = useState<ObjectState>(() => readJson<ObjectState>(LIVE_STATE_KEY) ?? makeInitialState());
-  const [strategy, setStrategyState] = useState<CoachStrategy>(() => loadStrategy());
 
   useEffect(() => {
     writeJson(LIVE_STATE_KEY, state);
   }, [state]);
 
-  const setStrategy = useCallback((value: CoachStrategy) => {
-    setStrategyState(value);
-    saveStrategy(value);
-  }, []);
-
-  const advice = useMemo(() => getCoachAdvice(state, goals, strategy), [state, goals, strategy]);
+  const advice = useMemo(() => getCoachAdvice(state, goals), [state, goals]);
   const goalReached = useMemo(() => isGoalReached(state, goals), [state, goals]);
 
   const setValue = useCallback((line: LineKey, value: number) => {
@@ -68,5 +61,5 @@ export function useLiveCoach(goals: GoalOverrides) {
     setState({ values: { ...values }, puits });
   }, []);
 
-  return { state, advice, goalReached, strategy, setStrategy, setValue, setPuits, applyReadValues, resetTo };
+  return { state, advice, goalReached, setValue, setPuits, applyReadValues, resetTo };
 }

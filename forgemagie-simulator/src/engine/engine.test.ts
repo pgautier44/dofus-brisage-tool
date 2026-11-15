@@ -217,8 +217,8 @@ describe('objectifs définis par l\'utilisateur (goals)', () => {
   });
 });
 
-describe('stratégie "stabilize-first"', () => {
-  it('construit les lignes sûres avant de retoucher Cri/Do, même si Cri/Do sont sous le minimum', () => {
+describe('le coach construit toujours les lignes sûres avant de retoucher Cri/Do/Ga Pa', () => {
+  it('ignore Cri/Do tant qu\'une ligne sûre (poids < 10) est encore sous son minimum, même si Cri/Do le sont aussi', () => {
     const state = createObjectState({
       pa: 0,
       vi: 0,
@@ -231,17 +231,14 @@ describe('stratégie "stabilize-first"', () => {
       rfeu: 0,
       pro: 0,
     });
-    const standard = getCoachAdvice(state, undefined, 'standard');
-    expect(standard.rune?.id).toBe('cri'); // le standard fonce sur Cri immédiatement
-
-    const stabilize = getCoachAdvice(state, undefined, 'stabilize-first');
-    expect(stabilize.rune?.id).not.toBe('cri');
-    expect(stabilize.rune?.id).not.toBe('do');
-    expect(stabilize.rune?.line).toBe('rair'); // prembattre priorité de PHASE_B_PRIORITY
-    expect(stabilize.rune!.weight).toBeLessThan(10);
+    const advice = getCoachAdvice(state);
+    expect(advice.rune?.id).not.toBe('cri');
+    expect(advice.rune?.id).not.toBe('do');
+    expect(advice.rune?.line).toBe('rair'); // première priorité de PHASE_B_PRIORITY
+    expect(advice.rune!.weight).toBeLessThan(10);
   });
 
-  it('une fois toutes les lignes sûres au niveau, retombe sur la logique standard Cri -> Do -> Ga Pa', () => {
+  it('une fois toutes les lignes sûres au niveau, passe à la logique Cri -> Do -> Ga Pa', () => {
     const state = createObjectState({
       pa: 0,
       vi: 115,
@@ -254,22 +251,14 @@ describe('stratégie "stabilize-first"', () => {
       rfeu: 5,
       pro: 0,
     });
-    const stabilize = getCoachAdvice(state, undefined, 'stabilize-first');
-    expect(stabilize.rune?.id).toBe('cri');
+    const advice = getCoachAdvice(state);
+    expect(advice.rune?.id).toBe('cri');
   });
 
-  it("n'affecte pas la phase B (une fois le PA acquis, comportement identique)", () => {
+  it('phase B (PA déjà acquis) ignore les lignes sûres déjà au minimum et recommande la suivante sous le minimum', () => {
     const state = createObjectState({ ...MON_ANNEAU_HDV_VALUES, pa: 1, rair: 4 });
-    const standard = getCoachAdvice(state, undefined, 'standard');
-    const stabilize = getCoachAdvice(state, undefined, 'stabilize-first');
-    expect(stabilize).toEqual(standard);
-  });
-
-  it('sans argument de stratégie, le comportement par défaut reste "standard"', () => {
-    const state = createObjectState({ ...MON_ANNEAU_HDV_VALUES, pa: 0, cri: 2, do: 2, vi: 0 });
-    const noStrategyArg = getCoachAdvice(state);
-    const explicitStandard = getCoachAdvice(state, undefined, 'standard');
-    expect(noStrategyArg).toEqual(explicitStandard);
-    expect(noStrategyArg.rune?.id).toBe('cri');
+    const advice = getCoachAdvice(state);
+    expect(advice.phase).toBe('B');
+    expect(advice.rune?.line).toBe('rair');
   });
 });

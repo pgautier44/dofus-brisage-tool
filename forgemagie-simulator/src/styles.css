@@ -283,35 +283,6 @@ section {
   border-radius: 4px;
 }
 
-.strategy-options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.strategy-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: var(--panel-alt);
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.strategy-option input[type='radio'] {
-  margin-top: 4px;
-  flex-shrink: 0;
-}
-
-.strategy-option strong {
-  color: var(--gold);
-}
-
-.strategy-option .objectives-hint {
-  margin: 2px 0 0;
-}
-
 .objective-row label {
   font-size: 0.8rem;
 }

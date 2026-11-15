@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RUNES } from '../engine/config';
-import type { CoachStrategy, GoalOverrides, ObjectState } from '../engine/types';
-import { loadRunePrices, loadStrategy, saveRunePrices, type RunePrices } from '../storage';
+import type { GoalOverrides, ObjectState } from '../engine/types';
+import { loadRunePrices, saveRunePrices, type RunePrices } from '../storage';
 import type { SimulationAggregate, SimulationRequest } from '../worker/simulationWorker';
 
 export function EstimationTab({ currentState, goals }: { currentState: ObjectState; goals?: GoalOverrides }) {
   const [prices, setPrices] = useState<RunePrices>(() => loadRunePrices());
   const [trials, setTrials] = useState(1000);
-  const [strategy, setStrategy] = useState<CoachStrategy>(() => loadStrategy());
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SimulationAggregate | null>(null);
   const workerRef = useRef<Worker | null>(null);
@@ -45,7 +44,6 @@ export function EstimationTab({ currentState, goals }: { currentState: ObjectSta
       seed: Math.floor(Math.random() * 2 ** 31),
       pricePerRune: prices.perRune,
       goals,
-      strategy,
     };
     worker.postMessage(request);
   }
@@ -93,17 +91,6 @@ export function EstimationTab({ currentState, goals }: { currentState: ObjectSta
             onChange={(e) => setTrials(Math.max(10, Number(e.target.value)))}
           />
         </label>
-        <label>
-          Stratégie du coach
-          <select value={strategy} onChange={(e) => setStrategy(e.target.value as CoachStrategy)}>
-            <option value="standard">Standard</option>
-            <option value="stabilize-first">Stabiliser d'abord</option>
-          </select>
-        </label>
-        <p className="objectives-hint">
-          Lance la même simulation avec chaque stratégie (même nombre d'essais) pour comparer coût moyen et taux de
-          réussite avant de choisir laquelle suivre sur ton vrai anneau.
-        </p>
         <button type="button" onClick={runSimulation} disabled={running}>
           {running ? 'Simulation en cours…' : `Simuler ${trials} essais`}
         </button>

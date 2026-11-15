@@ -92,20 +92,6 @@ export type Rng = () => number;
 
 export type CoachPhase = 'A' | 'B' | 'done';
 
-/**
- * - 'standard' : phase A fait Cri puis Do puis tente le Ga Pa dès que possible (le plus
- *   léger possible au moment du Ga Pa, donc la meilleure probabilité pour CE tirage-là).
- * - 'stabilize-first' : phase A construit d'abord toutes les lignes "sûres" (poids < 10 :
- *   Ré Per Air, Agilité, Puissance, Vitalité, Ré Terre, Ré Feu) avant de toucher à
- *   Cri/Do/Ga Pa. Objectif : une fois Cri ou Do touché par une perte, le tirage au sort de
- *   la ligne qui encaisse une perte a beaucoup plus de lignes non nulles où atterrir
- *   plutôt que de se concentrer sur l'autre des deux (Cri <-> Do qui se renvoient la perte
- *   en boucle quand ce sont les deux seules lignes non nulles restantes). Coûte un poids
- *   plus élevé au moment du Ga Pa (donc une probabilité un peu plus faible pour CE
- *   tirage), mais vise moins de reprises ratées sur Cri/Do au global.
- */
-export type CoachStrategy = 'standard' | 'stabilize-first';
-
 export interface CoachAdvice {
   phase: CoachPhase;
   /** null si aucune rune à conseiller (ex: "Accepte ou risque le PA", ou objectif atteint) */

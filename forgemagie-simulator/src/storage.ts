@@ -1,5 +1,5 @@
 import { MON_ANNEAU_HDV_PRICE_DEFAULT, RUNES } from './engine/config';
-import type { CoachStrategy, GoalOverrides, LineValues, ObjectState, RuneId, RuneOutcome } from './engine/types';
+import type { GoalOverrides, LineValues, ObjectState, RuneId, RuneOutcome } from './engine/types';
 import type { Calibration } from './screen/types';
 
 const SESSION_KEY = 'forgemagie:session:v1';
@@ -7,7 +7,6 @@ const PRICES_KEY = 'forgemagie:prices:v1';
 const HISTORY_KEY = 'forgemagie:history:v1';
 const GOALS_KEY = 'forgemagie:goals:v1';
 const CALIBRATION_KEY = 'forgemagie:calibration:v1';
-const STRATEGY_KEY = 'forgemagie:strategy:v1';
 
 export interface JournalEntry {
   id: string;
@@ -113,12 +112,4 @@ export function loadCalibration(): Calibration {
 
 export function saveCalibration(calibration: Calibration): void {
   writeJson(CALIBRATION_KEY, calibration);
-}
-
-export function loadStrategy(): CoachStrategy {
-  return readJson<CoachStrategy>(STRATEGY_KEY) ?? 'standard';
-}
-
-export function saveStrategy(strategy: CoachStrategy): void {
-  writeJson(STRATEGY_KEY, strategy);
 }

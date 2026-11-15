@@ -4,17 +4,15 @@ import { getCoachAdvice } from '../engine/coach';
 import { MON_ANNEAU_HDV_VALUES, randomAnneauValues } from '../engine/config';
 import { mathRandomRng } from '../engine/rng';
 import { cloneState, isGoalReached } from '../engine/state';
-import type { CoachAdvice, CoachStrategy, GoalOverrides, LineKey, LineValues, ObjectState, RuneConfig } from '../engine/types';
+import type { CoachAdvice, GoalOverrides, LineKey, LineValues, ObjectState, RuneConfig } from '../engine/types';
 import {
   JournalEntry,
   appendHistoryEntry,
   clearSession,
   loadGoals,
   loadSession,
-  loadStrategy,
   saveGoals,
   saveSession,
-  saveStrategy,
 } from '../storage';
 
 function makeInitialState(values: LineValues = MON_ANNEAU_HDV_VALUES): ObjectState {
@@ -34,7 +32,6 @@ export function useSimulatorSession() {
   const [undoStack, setUndoStack] = useState<ObjectState[]>(() => stored?.undoStack ?? []);
   const [loggedGoal, setLoggedGoal] = useState(false);
   const [goals, setGoals] = useState<GoalOverrides>(() => loadGoals());
-  const [strategy, setStrategyState] = useState<CoachStrategy>(() => loadStrategy());
 
   useEffect(() => {
     saveSession({ state, journal, undoStack });
@@ -50,12 +47,7 @@ export function useSimulatorSession() {
 
   const resetGoals = useCallback(() => setGoals({}), []);
 
-  const setStrategy = useCallback((value: CoachStrategy) => {
-    setStrategyState(value);
-    saveStrategy(value);
-  }, []);
-
-  const advice: CoachAdvice = useMemo(() => getCoachAdvice(state, goals, strategy), [state, goals, strategy]);
+  const advice: CoachAdvice = useMemo(() => getCoachAdvice(state, goals), [state, goals]);
   const goalReached = useMemo(() => isGoalReached(state, goals), [state, goals]);
 
   const poseRune = useCallback(
@@ -123,8 +115,6 @@ export function useSimulatorSession() {
     goals,
     setGoal,
     resetGoals,
-    strategy,
-    setStrategy,
     canUndo: undoStack.length > 0,
     poseRune,
     undo,

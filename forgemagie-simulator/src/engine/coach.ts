@@ -2,7 +2,7 @@ import { LINES, RUNE_BY_ID, RUNES } from './config';
 import { isRuneAvailable } from './caps';
 import { calcSuccessProbability } from './probability';
 import { effectiveMinOk, isGoalReached } from './state';
-import type { CoachAdvice, CoachStrategy, GoalOverrides, LineKey, ObjectState, RuneConfig } from './types';
+import type { CoachAdvice, GoalOverrides, LineKey, ObjectState, RuneConfig } from './types';
 
 const PHASE_B_PRIORITY: LineKey[] = ['rair', 'age', 'pui', 'vi', 'rterre', 'rfeu'];
 
@@ -37,40 +37,43 @@ function meetsGoal(state: ObjectState, line: LineKey, goals?: GoalOverrides): bo
 
 /**
  * Conseil du coach, en deux phases :
- * - Phase A (PA == 0) : priorité Cri (si sous le minimum visé), sinon Do (idem), sinon
- *   Ga Pa — tenté dès que Cri et Do atteignent le minimum visé, quelle que soit sa
- *   probabilité de réussite (elle ne dépassera jamais 50% par construction : c'est
- *   attendu, pas une raison de ne pas essayer). En stratégie 'stabilize-first', les
- *   lignes sûres (poids < 10) sont construites en premier, avant même de toucher à
- *   Cri/Do — voir CoachStrategy pour le détail du compromis.
+ * - Phase A (PA == 0) : on construit D'ABORD toutes les lignes sûres (poids < 10 : Ré
+ *   Per Air, Agilité, Puissance, Vitalité, Ré Terre, Ré Feu) jusqu'à leur minimum
+ *   visé, avant même de toucher à Cri, Do ou Ga Pa. Raison, vérifiée par simulation
+ *   (20 000 essais, voir historique de commit) : une perte collatérale (echec/neutre)
+ *   épargne la ligne qu'on vient de viser et tombe au hasard sur une AUTRE ligne non
+ *   nulle. Si Cri et Do sont les seules lignes non nulles, elles se renvoient
+ *   systématiquement la perte en boucle. Et une fois le PA acquis (phase B), si Cri ou
+ *   Do retombe sous le minimum, il n'existe plus aucune rune sûre pour le remonter
+ *   (il faudrait une rune ≥ 10 de poids, qui risquerait de refaire sauter le PA) : on
+ *   reste alors bloqué avec un essai perdu. Construire les lignes sûres en premier
+ *   élimine presque totalement ce blocage (essais simulés : taux de réussite ×8 à
+ *   ×80 selon l'état de départ). Une fois toutes les lignes sûres au minimum, la
+ *   priorité redevient Cri, puis Do, puis Ga Pa, tenté dès que possible quelle que
+ *   soit sa probabilité de réussite (elle ne dépassera jamais 50% par construction :
+ *   c'est attendu, pas une raison de ne pas essayer).
  * - Phase B (PA == 1) : uniquement des runes de poids < 10, dans l'ordre de priorité
  *   Ré Per Air, Agilité, Puissance, Vitalité, Ré Terre, Ré Feu. Jamais Cri/Do/Ga Pa.
- *   Si Cri ou Do est retombé sous le minimum visé, impossible d'y remédier sans
- *   risquer le PA (ces runes pèsent >= 10) : le coach prévient plutôt que de
- *   conseiller une pose.
+ *   Si Cri ou Do est malgré tout retombé sous le minimum visé (perte collatérale
+ *   après l'obtention du PA), impossible d'y remédier sans risquer le PA : le coach
+ *   prévient plutôt que de conseiller une pose.
  *
  * `goals` permet de remplacer les minimums par défaut (config.ts) par des minimums
  * choisis par l'utilisateur, par exemple pour viser un anneau plus fort que le
  * minimum "jouable".
  */
-export function getCoachAdvice(
-  state: ObjectState,
-  goals?: GoalOverrides,
-  strategy: CoachStrategy = 'standard'
-): CoachAdvice {
+export function getCoachAdvice(state: ObjectState, goals?: GoalOverrides): CoachAdvice {
   if (state.values.pa === 0) {
-    if (strategy === 'stabilize-first') {
-      for (const line of PHASE_B_PRIORITY) {
-        if (meetsGoal(state, line, goals)) continue;
-        const rune = bestAvailableRune(state, phaseBCandidateRunes(line));
-        if (rune) {
-          return advise(
-            state,
-            'A',
-            rune,
-            `Stabilisation : ${LINES[line].label} sous le minimum visé — on la remonte avant de retoucher Cri/Do, pour que leurs pertes se dispersent sur plus de lignes au lieu de se renvoyer la balle entre elles deux.`
-          );
-        }
+    for (const line of PHASE_B_PRIORITY) {
+      if (meetsGoal(state, line, goals)) continue;
+      const rune = bestAvailableRune(state, phaseBCandidateRunes(line));
+      if (rune) {
+        return advise(
+          state,
+          'A',
+          rune,
+          `Stabilisation : ${LINES[line].label} sous le minimum visé — on la remonte avant de retoucher Cri/Do, pour que leurs pertes se dispersent sur plus de lignes au lieu de se renvoyer la balle entre elles deux.`
+        );
       }
     }
     if (!meetsGoal(state, 'cri', goals)) {
