@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDigits } from './ocr';
+import { parseDecimal, parseDigits } from './ocr';
 
 describe('parseDigits', () => {
   it('extrait un nombre simple', () => {
@@ -19,5 +19,29 @@ describe('parseDigits', () => {
   it('renvoie null quand aucun chiffre n\'est reconnu', () => {
     expect(parseDigits('')).toBeNull();
     expect(parseDigits('abc')).toBeNull();
+  });
+});
+
+describe('parseDecimal (puits / "reliquat")', () => {
+  it('convertit la virgule française en point', () => {
+    expect(parseDecimal('0,2')).toBe(0.2);
+    expect(parseDecimal('12,5')).toBe(12.5);
+  });
+
+  it('accepte aussi un point décimal directement', () => {
+    expect(parseDecimal('0.2')).toBe(0.2);
+  });
+
+  it('gère un entier sans séparateur', () => {
+    expect(parseDecimal('100')).toBe(100);
+  });
+
+  it('ignore le texte parasite autour du nombre', () => {
+    expect(parseDecimal('reliquat : 0,2')).toBe(0.2);
+  });
+
+  it('renvoie null quand aucun chiffre n\'est reconnu', () => {
+    expect(parseDecimal('')).toBeNull();
+    expect(parseDecimal('abc')).toBeNull();
   });
 });

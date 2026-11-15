@@ -27,10 +27,7 @@ async function getWorker(): Promise<Tesseract.Worker> {
   if (!workerPromise) {
     workerPromise = withTimeout(
       Tesseract.createWorker('eng').then(async (worker) => {
-        await worker.setParameters({
-          tessedit_char_whitelist: '0123456789',
-          tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-        });
+        await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
         return worker;
       }),
       WORKER_INIT_TIMEOUT_MS,
@@ -43,6 +40,16 @@ async function getWorker(): Promise<Tesseract.Worker> {
     });
   }
   return workerPromise;
+}
+
+// Le puits ("reliquat" dans Dofus) est la seule valeur décimale (ex: "0,2") ; les lignes de
+// stats sont toujours des entiers. On bascule la liste de caractères autorisés juste avant
+// chaque lecture plutôt que de la fixer une fois pour toutes sur le worker partagé.
+async function setWhitelist(decimal: boolean): Promise<void> {
+  const worker = await getWorker();
+  await worker.setParameters({
+    tessedit_char_whitelist: decimal ? '0123456789,.' : '0123456789',
+  });
 }
 
 export async function terminateOcrWorker(): Promise<void> {
@@ -63,12 +70,35 @@ export function parseDigits(rawText: string): number | null {
   return digits.length > 0 ? Number(digits) : null;
 }
 
+/**
+ * Comme parseDigits, mais pour une valeur décimale (le puits/"reliquat", ex: "0,2") : la
+ * virgule française est normalisée en point avant conversion, et un seul séparateur est
+ * conservé (le premier) pour éviter qu'un bruit de l'OCR n'en introduise un second.
+ */
+export function parseDecimal(rawText: string): number | null {
+  const firstSegment = rawText.split('/')[0].replace(',', '.');
+  const match = firstSegment.match(/\d+(\.\d+)?/);
+  return match ? Number(match[0]) : null;
+}
+
 /** Lit un nombre entier sur une image déjà recadrée sur la zone concernée. */
 export async function recognizeNumber(image: HTMLCanvasElement): Promise<{ rawText: string; value: number | null }> {
+  await setWhitelist(false);
   const worker = await getWorker();
   const {
     data: { text },
   } = await worker.recognize(image);
   const rawText = text.trim();
   return { rawText, value: parseDigits(rawText) };
+}
+
+/** Comme recognizeNumber, mais autorise une virgule/point pour lire le puits ("reliquat"). */
+export async function recognizeDecimal(image: HTMLCanvasElement): Promise<{ rawText: string; value: number | null }> {
+  await setWhitelist(true);
+  const worker = await getWorker();
+  const {
+    data: { text },
+  } = await worker.recognize(image);
+  const rawText = text.trim();
+  return { rawText, value: parseDecimal(rawText) };
 }

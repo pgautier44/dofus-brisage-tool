@@ -3,7 +3,7 @@ import { LINES, LINE_ORDER, MON_ANNEAU_HDV_VALUES } from '../engine/config';
 import type { GoalOverrides, LineKey, LineValues, ObjectState } from '../engine/types';
 import { useLiveCoach } from '../hooks/useLiveCoach';
 import { cropRegion, grabFrame, startScreenCapture, stopStream } from '../screen/capture';
-import { recognizeNumber } from '../screen/ocr';
+import { recognizeDecimal, recognizeNumber } from '../screen/ocr';
 import type { Calibration, ReadResult, RegionKey } from '../screen/types';
 import { loadCalibration, saveCalibration } from '../storage';
 import { CalibrationEditor } from './CalibrationEditor';
@@ -17,7 +17,7 @@ import { RuneGrid } from './RuneGrid';
 const REGION_KEYS: RegionKey[] = [...LINE_ORDER.filter((k) => k !== 'pa'), 'puits'];
 
 function labelFor(key: RegionKey): string {
-  return key === 'puits' ? 'Puits' : LINES[key].label;
+  return key === 'puits' ? 'Puits ("reliquat" dans Dofus)' : LINES[key].label;
 }
 
 function ManualValuesPanel({
@@ -171,7 +171,7 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
       for (const key of calibratedKeys) {
         const region = calibration[key]!;
         const crop = cropRegion(frame, region);
-        const { rawText, value } = await recognizeNumber(crop);
+        const { rawText, value } = key === 'puits' ? await recognizeDecimal(crop) : await recognizeNumber(crop);
         results[key] = { key, rawText, value };
         drafts[key] = value !== null ? String(value) : '';
       }
@@ -259,13 +259,17 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
             </button>
           </div>
           <p className="objectives-hint">
-            Choisis une ligne ci-dessous puis dessine un rectangle serré autour du nombre correspondant
-            dans l'image. La zone est mémorisée (même après fermeture du navigateur) tant que la fenêtre du
-            jeu garde la même position à l'écran. <strong>Pas besoin de toutes les faire</strong> : seules les
-            zones calibrées seront lues par "Lire l'écran" ; les autres restent modifiables à la main dans
-            "Saisie / correction manuelle" ci-dessous. Le PA (exo) n'apparaît pas ici — il ne s'affiche comme
-            valeur nulle part dans Dofus tant qu'il n'est pas obtenu, donc il se renseigne uniquement à la main
-            (0 ou 1). Pour refaire une seule zone, redessine simplement par-dessus, ou efface-la avec le ✕.
+            Choisis une ligne ci-dessous puis dessine un rectangle autour du nombre correspondant dans
+            l'image — <strong>laisse un peu de marge</strong> (pas collé aux chiffres) : si la valeur passe
+            de 2 à 3 chiffres (ex: 9 → 10) ou qu'un badge +1/-1 apparaît juste à côté après une pose, une
+            zone trop serrée peut rater le nouveau texte ou capturer le badge par erreur. La zone est
+            mémorisée tant que la fenêtre du jeu garde la même position à l'écran.{' '}
+            <strong>Pas besoin de toutes les faire</strong> : seules les zones calibrées seront lues par
+            "Lire l'écran" ; les autres restent modifiables à la main dans "Saisie / correction manuelle"
+            ci-dessous. Le PA (exo) n'apparaît pas ici — il ne s'affiche comme valeur nulle part dans Dofus
+            tant qu'il n'est pas obtenu, donc il se renseigne uniquement à la main (0 ou 1). Le "Puits" est
+            appelé <strong>"reliquat"</strong> dans Dofus (affiché en haut du panneau). Pour refaire une
+            seule zone, redessine simplement par-dessus, ou efface-la avec le ✕.
           </p>
           <div className="region-picker">
             {REGION_KEYS.map((key) => (
@@ -340,6 +344,7 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
                   <label>{labelFor(key)}</label>
                   <input
                     type="number"
+                    step={key === 'puits' ? '0.1' : '1'}
                     value={draftValues[key] ?? ''}
                     onChange={(e) => setDraftValues((d) => ({ ...d, [key]: e.target.value }))}
                   />
