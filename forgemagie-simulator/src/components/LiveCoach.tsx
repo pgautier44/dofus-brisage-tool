@@ -81,6 +81,7 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
   const [draftValues, setDraftValues] = useState<Partial<Record<RegionKey, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [justValidated, setJustValidated] = useState(false);
+  const [zoom, setZoom] = useState(100);
 
   useEffect(() => {
     saveCalibration(calibration);
@@ -299,12 +300,27 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
             Seule la zone de la ligne sélectionnée ci-dessus s'affiche sur l'image (pour ne pas se gêner avec
             les autres) — les zones déjà faites ne sont pas perdues, clique leur chip pour les revoir.
           </p>
+          <div className="calibration-zoom-controls">
+            <span>Zoom :</span>
+            {[100, 150, 200, 300].map((z) => (
+              <button
+                key={z}
+                type="button"
+                className={zoom === z ? 'active' : ''}
+                onClick={() => setZoom(z)}
+              >
+                {z}%
+              </button>
+            ))}
+            <span>utilise l'ascenseur de l'image pour te déplacer une fois zoomé.</span>
+          </div>
           <CalibrationEditor
             frameDataUrl={calibrationFrameUrl}
             calibration={calibration}
             activeKey={activeKey}
             onRegionDrawn={handleRegionDrawn}
             labelFor={labelFor}
+            zoom={zoom}
           />
           {calibratedCount > 0 && (
             <div className="live-next-step">

@@ -7,6 +7,10 @@ interface CalibrationEditorProps {
   activeKey: RegionKey;
   onRegionDrawn: (key: RegionKey, region: { x: number; y: number; width: number; height: number }) => void;
   labelFor: (key: RegionKey) => string;
+  /** Pourcentage de zoom (100 = taille de base) : agrandit l'image pour dessiner un
+   * rectangle plus précis sur un petit chiffre, sans changer le calcul des coordonnées
+   * (toujours en fractions 0..1, donc indépendant de la taille affichée). */
+  zoom: number;
 }
 
 interface DragState {
@@ -18,7 +22,9 @@ interface DragState {
   height: number;
 }
 
-export function CalibrationEditor({ frameDataUrl, calibration, activeKey, onRegionDrawn, labelFor }: CalibrationEditorProps) {
+const BASE_WIDTH_PX = 900;
+
+export function CalibrationEditor({ frameDataUrl, calibration, activeKey, onRegionDrawn, labelFor, zoom }: CalibrationEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
 
@@ -51,42 +57,45 @@ export function CalibrationEditor({ frameDataUrl, calibration, activeKey, onRegi
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="calibration-editor"
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
-    >
-      <img src={frameDataUrl} alt="Calibration" draggable={false} />
-      {/* Seule la zone en cours de calibrage est affichée : les autres, une fois faites,
-          se superposaient et gênaient pour dessiner un nouveau rectangle précis. Clique
-          un autre chip pour voir/retoucher sa propre zone. */}
-      {calibration[activeKey] && (
-        <div
-          className="calibration-rect calibration-rect-active"
-          style={{
-            left: `${calibration[activeKey]!.x * 100}%`,
-            top: `${calibration[activeKey]!.y * 100}%`,
-            width: `${calibration[activeKey]!.width * 100}%`,
-            height: `${calibration[activeKey]!.height * 100}%`,
-          }}
-        >
-          <span className="calibration-rect-label">{labelFor(activeKey)}</span>
-        </div>
-      )}
-      {drag && (
-        <div
-          className="calibration-rect calibration-rect-dragging"
-          style={{
-            left: `${drag.x * 100}%`,
-            top: `${drag.y * 100}%`,
-            width: `${drag.width * 100}%`,
-            height: `${drag.height * 100}%`,
-          }}
-        />
-      )}
+    <div className="calibration-scroll">
+      <div
+        ref={containerRef}
+        className="calibration-editor"
+        style={{ width: `${(BASE_WIDTH_PX * zoom) / 100}px` }}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+      >
+        <img src={frameDataUrl} alt="Calibration" draggable={false} />
+        {/* Seule la zone en cours de calibrage est affichée : les autres, une fois faites,
+            se superposaient et gênaient pour dessiner un nouveau rectangle précis. Clique
+            un autre chip pour voir/retoucher sa propre zone. */}
+        {calibration[activeKey] && (
+          <div
+            className="calibration-rect calibration-rect-active"
+            style={{
+              left: `${calibration[activeKey]!.x * 100}%`,
+              top: `${calibration[activeKey]!.y * 100}%`,
+              width: `${calibration[activeKey]!.width * 100}%`,
+              height: `${calibration[activeKey]!.height * 100}%`,
+            }}
+          >
+            <span className="calibration-rect-label">{labelFor(activeKey)}</span>
+          </div>
+        )}
+        {drag && (
+          <div
+            className="calibration-rect calibration-rect-dragging"
+            style={{
+              left: `${drag.x * 100}%`,
+              top: `${drag.y * 100}%`,
+              width: `${drag.width * 100}%`,
+              height: `${drag.height * 100}%`,
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

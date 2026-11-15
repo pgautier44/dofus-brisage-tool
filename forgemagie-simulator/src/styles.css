@@ -569,10 +569,40 @@ section {
   margin: 0;
 }
 
+.calibration-scroll {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.calibration-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.calibration-zoom-controls span {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.calibration-zoom-controls button {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.calibration-zoom-controls button.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(217, 164, 65, 0.12);
+}
+
 .calibration-editor {
   position: relative;
   display: inline-block;
-  max-width: 100%;
   user-select: none;
   cursor: crosshair;
 }
@@ -580,8 +610,6 @@ section {
 .calibration-editor img {
   display: block;
   width: 100%;
-  max-width: 900px;
-  border: 1px solid var(--border);
   border-radius: 6px;
 }
 
