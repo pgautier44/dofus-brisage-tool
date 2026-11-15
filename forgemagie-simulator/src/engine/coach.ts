@@ -2,7 +2,7 @@ import { LINES, RUNE_BY_ID, RUNES } from './config';
 import { isRuneAvailable } from './caps';
 import { calcSuccessProbability } from './probability';
 import { effectiveMinOk, isGoalReached } from './state';
-import type { CoachAdvice, GoalOverrides, LineKey, ObjectState, RuneConfig } from './types';
+import type { CoachAdvice, CoachStrategy, GoalOverrides, LineKey, ObjectState, RuneConfig } from './types';
 
 const PHASE_B_PRIORITY: LineKey[] = ['rair', 'age', 'pui', 'vi', 'rterre', 'rfeu'];
 
@@ -40,7 +40,9 @@ function meetsGoal(state: ObjectState, line: LineKey, goals?: GoalOverrides): bo
  * - Phase A (PA == 0) : priorité Cri (si sous le minimum visé), sinon Do (idem), sinon
  *   Ga Pa — tenté dès que Cri et Do atteignent le minimum visé, quelle que soit sa
  *   probabilité de réussite (elle ne dépassera jamais 50% par construction : c'est
- *   attendu, pas une raison de ne pas essayer).
+ *   attendu, pas une raison de ne pas essayer). En stratégie 'stabilize-first', les
+ *   lignes sûres (poids < 10) sont construites en premier, avant même de toucher à
+ *   Cri/Do — voir CoachStrategy pour le détail du compromis.
  * - Phase B (PA == 1) : uniquement des runes de poids < 10, dans l'ordre de priorité
  *   Ré Per Air, Agilité, Puissance, Vitalité, Ré Terre, Ré Feu. Jamais Cri/Do/Ga Pa.
  *   Si Cri ou Do est retombé sous le minimum visé, impossible d'y remédier sans
@@ -51,8 +53,26 @@ function meetsGoal(state: ObjectState, line: LineKey, goals?: GoalOverrides): bo
  * choisis par l'utilisateur, par exemple pour viser un anneau plus fort que le
  * minimum "jouable".
  */
-export function getCoachAdvice(state: ObjectState, goals?: GoalOverrides): CoachAdvice {
+export function getCoachAdvice(
+  state: ObjectState,
+  goals?: GoalOverrides,
+  strategy: CoachStrategy = 'standard'
+): CoachAdvice {
   if (state.values.pa === 0) {
+    if (strategy === 'stabilize-first') {
+      for (const line of PHASE_B_PRIORITY) {
+        if (meetsGoal(state, line, goals)) continue;
+        const rune = bestAvailableRune(state, phaseBCandidateRunes(line));
+        if (rune) {
+          return advise(
+            state,
+            'A',
+            rune,
+            `Stabilisation : ${LINES[line].label} sous le minimum visé — on la remonte avant de retoucher Cri/Do, pour que leurs pertes se dispersent sur plus de lignes au lieu de se renvoyer la balle entre elles deux.`
+          );
+        }
+      }
+    }
     if (!meetsGoal(state, 'cri', goals)) {
       return advise(state, 'A', RUNE_BY_ID.cri, 'Critique sous le minimum visé : on le sécurise avant tout.');
     }

@@ -10,6 +10,7 @@ import { CalibrationEditor } from './CalibrationEditor';
 import { CoachPanel } from './CoachPanel';
 import { Gauges } from './Gauges';
 import { RuneGrid } from './RuneGrid';
+import { StrategyPanel } from './StrategyPanel';
 
 // Le PA (exo) n'apparaît jamais comme une valeur numérique affichée dans Dofus tant qu'il
 // n'est pas obtenu (pas de ligne à cadrer) : il n'a donc pas sa place dans la liste des
@@ -389,6 +390,7 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
           />
         </section>
         <section className="action-column">
+          <StrategyPanel strategy={liveCoach.strategy} onChange={liveCoach.setStrategy} />
           <CoachPanel advice={liveCoach.advice} />
           <RuneGrid state={liveCoach.state} recommendedRuneId={liveCoach.advice.rune?.id ?? null} onPose={() => {}} readOnly />
         </section>

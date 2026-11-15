@@ -2,7 +2,7 @@ import { RUNE_LIMIT } from './config';
 import { applyRune } from './applyRune';
 import { getCoachAdvice } from './coach';
 import { cloneState, isGoalReached } from './state';
-import type { GoalOverrides, ObjectState, Rng, RuneId, TrialSummary } from './types';
+import type { CoachStrategy, GoalOverrides, ObjectState, Rng, RuneId, TrialSummary } from './types';
 
 export interface SimulateOptions {
   rng: Rng;
@@ -10,6 +10,8 @@ export interface SimulateOptions {
   pricePerRune?: Partial<Record<RuneId, number>>;
   /** Minimums visés par l'utilisateur, remplaçant les minOk par défaut. */
   goals?: GoalOverrides;
+  /** 'standard' (défaut) ou 'stabilize-first' — voir CoachStrategy. */
+  strategy?: CoachStrategy;
 }
 
 /**
@@ -19,7 +21,7 @@ export interface SimulateOptions {
  * RUNE_LIMIT poses.
  */
 export function simulateTrial(initialState: ObjectState, options: SimulateOptions): TrialSummary {
-  const { rng, pricePerRune = {}, goals } = options;
+  const { rng, pricePerRune = {}, goals, strategy = 'standard' } = options;
   let state: ObjectState = cloneState(initialState);
   const runeCounts: Partial<Record<RuneId, number>> = {};
   let gaPaCount = 0;
@@ -34,7 +36,7 @@ export function simulateTrial(initialState: ObjectState, options: SimulateOption
       break;
     }
 
-    const advice = getCoachAdvice(state, goals);
+    const advice = getCoachAdvice(state, goals, strategy);
     if (advice.goalReached || !advice.rune) break;
 
     const wasPhaseB = advice.phase === 'B';

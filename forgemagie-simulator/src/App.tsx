@@ -9,6 +9,7 @@ import { Journal } from './components/Journal';
 import { LiveCoach } from './components/LiveCoach';
 import { ObjectivesPanel } from './components/ObjectivesPanel';
 import { RuneGrid } from './components/RuneGrid';
+import { StrategyPanel } from './components/StrategyPanel';
 import { useSimulatorSession } from './hooks/useSimulatorSession';
 
 type Tab = 'entrainement' | 'estimation' | 'historique' | 'direct';
@@ -54,6 +55,7 @@ export function App() {
             </section>
 
             <section className="action-column">
+              <StrategyPanel strategy={session.strategy} onChange={session.setStrategy} />
               <h3>Coach : quoi poser maintenant</h3>
               <CoachPanel advice={session.advice} onApply={session.poseRune} />
               <p className="rune-grid-hint">
