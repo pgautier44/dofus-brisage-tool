@@ -133,6 +133,19 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
     setCalibrationFrameUrl(frame.toDataURL('image/png'));
   }
 
+  function handleResetCalibration() {
+    setCalibration({});
+    setActiveKey(REGION_KEYS[0]);
+  }
+
+  function handleClearRegion(key: RegionKey) {
+    setCalibration((c) => {
+      const next = { ...c };
+      delete next[key];
+      return next;
+    });
+  }
+
   function handleRegionDrawn(key: RegionKey, region: { x: number; y: number; width: number; height: number }) {
     setCalibration((c) => ({ ...c, [key]: { key, ...region } }));
     const idx = REGION_KEYS.indexOf(key);
@@ -239,7 +252,12 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
 
       {calibrationFrameUrl && (
         <section className="live-calibration-section">
-          <h3>2. Calibrage des zones ({calibratedCount}/{REGION_KEYS.length})</h3>
+          <div className="section-header-row">
+            <h3>2. Calibrage des zones ({calibratedCount}/{REGION_KEYS.length})</h3>
+            <button type="button" className="danger" onClick={handleResetCalibration} disabled={calibratedCount === 0}>
+              Réinitialiser tout le calibrage
+            </button>
+          </div>
           <p className="objectives-hint">
             Choisis une ligne ci-dessous puis dessine un rectangle serré autour du nombre correspondant
             dans l'image. La zone est mémorisée (même après fermeture du navigateur) tant que la fenêtre du
@@ -247,18 +265,30 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
             zones calibrées seront lues par "Lire l'écran" ; les autres restent modifiables à la main dans
             "Saisie / correction manuelle" ci-dessous. Le PA (exo) n'apparaît pas ici — il ne s'affiche comme
             valeur nulle part dans Dofus tant qu'il n'est pas obtenu, donc il se renseigne uniquement à la main
-            (0 ou 1).
+            (0 ou 1). Pour refaire une seule zone, redessine simplement par-dessus, ou efface-la avec le ✕.
           </p>
           <div className="region-picker">
             {REGION_KEYS.map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={`region-chip ${key === activeKey ? 'region-chip-active' : ''} ${calibration[key] ? 'region-chip-done' : ''}`}
-                onClick={() => setActiveKey(key)}
-              >
-                {labelFor(key)}
-              </button>
+              <span className="region-chip-wrap" key={key}>
+                <button
+                  type="button"
+                  className={`region-chip ${key === activeKey ? 'region-chip-active' : ''} ${calibration[key] ? 'region-chip-done' : ''}`}
+                  onClick={() => setActiveKey(key)}
+                >
+                  {labelFor(key)}
+                </button>
+                {calibration[key] && (
+                  <button
+                    type="button"
+                    className="region-chip-clear-btn"
+                    aria-label={`Effacer la zone ${labelFor(key)}`}
+                    title="Effacer cette zone"
+                    onClick={() => handleClearRegion(key)}
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
             ))}
           </div>
           <CalibrationEditor
