@@ -2,14 +2,44 @@ import * as Tesseract from 'tesseract.js';
 
 let workerPromise: Promise<Tesseract.Worker> | null = null;
 
+// Le tout premier appel télécharge le moteur Tesseract (wasm + données de langue) depuis
+// un CDN — sur un réseau qui le bloque (proxy d'entreprise, etc.), ça resterait sinon
+// bloqué indéfiniment sur "Lecture en cours…" sans aucun message.
+const WORKER_INIT_TIMEOUT_MS = 25000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 async function getWorker(): Promise<Tesseract.Worker> {
   if (!workerPromise) {
-    workerPromise = Tesseract.createWorker('eng').then(async (worker) => {
-      await worker.setParameters({
-        tessedit_char_whitelist: '0123456789',
-        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-      });
-      return worker;
+    workerPromise = withTimeout(
+      Tesseract.createWorker('eng').then(async (worker) => {
+        await worker.setParameters({
+          tessedit_char_whitelist: '0123456789',
+          tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+        });
+        return worker;
+      }),
+      WORKER_INIT_TIMEOUT_MS,
+      "Le moteur de lecture n'a pas réussi à se charger (réseau lent ou bloqué). Réessaie, ou utilise la saisie manuelle en attendant."
+    ).catch((err) => {
+      // Permet une nouvelle tentative au prochain clic plutôt que de rester bloqué sur un
+      // échec permanent.
+      workerPromise = null;
+      throw err;
     });
   }
   return workerPromise;

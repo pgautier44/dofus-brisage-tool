@@ -298,6 +298,26 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
             onRegionDrawn={handleRegionDrawn}
             labelFor={labelFor}
           />
+          {calibratedCount > 0 && (
+            <div className="live-next-step">
+              <p className="live-success">
+                {calibratedCount === REGION_KEYS.length
+                  ? '✅ Toutes les zones sont calibrées.'
+                  : `${calibratedCount} zone(s) calibrée(s) — tu peux déjà tester, ou continuer à en ajouter.`}{' '}
+                Teste maintenant la lecture pour voir si l'OCR reconnaît bien tes valeurs :
+              </p>
+              <button type="button" className="coach-apply-btn" onClick={handleReadScreen} disabled={reading}>
+                {reading ? 'Lecture en cours…' : "Lire l'écran maintenant"}
+              </button>
+              {reading && (
+                <p className="objectives-hint">
+                  La toute première lecture télécharge le moteur de reconnaissance (quelques Mo) —
+                  ça peut prendre 10-20 secondes la première fois, puis c'est rapide ensuite.
+                </p>
+              )}
+              {error && <div className="live-error">{error}</div>}
+            </div>
+          )}
         </section>
       )}
 
