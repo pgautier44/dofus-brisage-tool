@@ -60,21 +60,21 @@ export function CalibrationEditor({ frameDataUrl, calibration, activeKey, onRegi
       onMouseLeave={onMouseUp}
     >
       <img src={frameDataUrl} alt="Calibration" draggable={false} />
-      {Object.values(calibration).map((region) =>
-        region ? (
-          <div
-            key={region.key}
-            className={`calibration-rect ${region.key === activeKey ? 'calibration-rect-active' : ''}`}
-            style={{
-              left: `${region.x * 100}%`,
-              top: `${region.y * 100}%`,
-              width: `${region.width * 100}%`,
-              height: `${region.height * 100}%`,
-            }}
-          >
-            <span className="calibration-rect-label">{labelFor(region.key)}</span>
-          </div>
-        ) : null
+      {/* Seule la zone en cours de calibrage est affichée : les autres, une fois faites,
+          se superposaient et gênaient pour dessiner un nouveau rectangle précis. Clique
+          un autre chip pour voir/retoucher sa propre zone. */}
+      {calibration[activeKey] && (
+        <div
+          className="calibration-rect calibration-rect-active"
+          style={{
+            left: `${calibration[activeKey]!.x * 100}%`,
+            top: `${calibration[activeKey]!.y * 100}%`,
+            width: `${calibration[activeKey]!.width * 100}%`,
+            height: `${calibration[activeKey]!.height * 100}%`,
+          }}
+        >
+          <span className="calibration-rect-label">{labelFor(activeKey)}</span>
+        </div>
       )}
       {drag && (
         <div

@@ -291,6 +291,10 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
               </span>
             ))}
           </div>
+          <p className="objectives-hint">
+            Seule la zone de la ligne sélectionnée ci-dessus s'affiche sur l'image (pour ne pas se gêner avec
+            les autres) — les zones déjà faites ne sont pas perdues, clique leur chip pour les revoir.
+          </p>
           <CalibrationEditor
             frameDataUrl={calibrationFrameUrl}
             calibration={calibration}
