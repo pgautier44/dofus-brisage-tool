@@ -11,7 +11,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // blocks saving while stale (see doSaveData()'s comment: that caused its own, worse data
 // loss on 2026-11-12). The actual safety net against a stale tab clobbering data is
 // mergeStateForSave(), not this version check.
-const APP_VERSION = '20261114a';
+const APP_VERSION = '20261115a';
 
 async function isVersionStale() {
   try {
@@ -366,6 +366,42 @@ function formatDate(iso) {
   return iso ? new Date(iso).toLocaleDateString('fr-FR') : '—';
 }
 
+// Pages (Bijoutier/Joaillo, Sculpteur, Rune trans, Tailleur, Alchimiste, Façonneur,
+// Façonneur Titi) qui ont la case "Craft trop cher ?" — pas Brisage, qui a sa propre case
+// "Toujours rentable" (concept différent).
+const CRAFT_TOO_EXPENSIVE_ITEM_KEYS = [
+  'jewels', 'sculptoItems', 'runeTransItems', 'tailleurItems',
+  'alchimisteItems', 'faconneurItems', 'faconneurTitiItems',
+];
+const CRAFT_TOO_EXPENSIVE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+// La case "Craft trop cher ?" se décoche toute seule 7 jours après avoir été cochée (le
+// prix du craft a de bonnes chances d'avoir rebougé depuis) — à appeler avant un rendu et
+// périodiquement, sans jamais attendre que l'utilisateur rouvre la page manuellement.
+function expireCraftTooExpensiveFlags() {
+  const now = Date.now();
+  let changed = false;
+  CRAFT_TOO_EXPENSIVE_ITEM_KEYS.forEach((key) => {
+    (state.data[key] || []).forEach((item) => {
+      if (!item.craftTooExpensive) return;
+      if (!item.craftTooExpensiveSetAt) {
+        // Cochée avant l'existence de cette fonctionnalité : le compte à rebours de 7
+        // jours démarre maintenant plutôt que de rester coché indéfiniment.
+        item.craftTooExpensiveSetAt = new Date().toISOString();
+        changed = true;
+        return;
+      }
+      if (now - new Date(item.craftTooExpensiveSetAt).getTime() >= CRAFT_TOO_EXPENSIVE_EXPIRY_MS) {
+        item.craftTooExpensive = false;
+        item.craftTooExpensiveSetAt = null;
+        touchUpdatedAt(item);
+        changed = true;
+      }
+    });
+  });
+  return changed;
+}
+
 function formatKamas(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
   return Math.round(n).toLocaleString('fr-FR');
@@ -667,8 +703,11 @@ function createFlipPage(cfg) {
       ? '<span class="opportunity-icon" title="Rentable et tout est vendu — plus rien en attente, bon candidat pour relancer un achat">🔁</span> '
       : '';
     const isOpen = state[cfg.openDetailKey] === item.id;
+    const craftTooExpensiveTitle = item.craftTooExpensive && item.craftTooExpensiveSetAt
+      ? ` title="Coché le ${formatDate(item.craftTooExpensiveSetAt)} — se décoche automatiquement 7 jours après"`
+      : '';
     const craftTooExpensiveCell = cfg.showCraftTooExpensive
-      ? `<td class="brisage-checkbox-cell"><input type="checkbox" class="craft-too-expensive-checkbox" data-id="${item.id}" ${item.craftTooExpensive ? 'checked' : ''}></td>`
+      ? `<td class="brisage-checkbox-cell"><input type="checkbox" class="craft-too-expensive-checkbox" data-id="${item.id}" ${item.craftTooExpensive ? 'checked' : ''}${craftTooExpensiveTitle}></td>`
       : '';
     const rowCls = [
       'clickable-row',
@@ -883,6 +922,9 @@ function createFlipPage(cfg) {
         const item = items().find((i) => i.id === e.target.dataset.id);
         if (!item) return;
         item.craftTooExpensive = e.target.checked;
+        // Horodatage pour expireCraftTooExpensiveFlags() : la case se décoche toute
+        // seule 7 jours après avoir été cochée.
+        item.craftTooExpensiveSetAt = e.target.checked ? new Date().toISOString() : null;
         touchUpdatedAt(item);
         saveData();
         renderTable();
@@ -1717,6 +1759,7 @@ const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 async function init() {
   state.data = await loadData();
+  if (expireCraftTooExpensiveFlags()) saveData();
   render();
   document.body.classList.remove('loading');
   try {
@@ -1730,6 +1773,14 @@ async function init() {
   checkLocalMirror();
   checkForNewVersion();
   setInterval(checkForNewVersion, VERSION_CHECK_INTERVAL_MS);
+  // Un onglet resté ouvert plusieurs jours doit aussi voir les cases "Craft trop cher ?"
+  // se décocher toutes seules sans attendre un rechargement de page.
+  setInterval(() => {
+    if (expireCraftTooExpensiveFlags()) {
+      saveData();
+      render();
+    }
+  }, VERSION_CHECK_INTERVAL_MS);
 }
 
 init();
