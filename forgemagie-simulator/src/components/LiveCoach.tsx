@@ -69,6 +69,7 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
   const [readResults, setReadResults] = useState<Partial<Record<RegionKey, ReadResult>>>({});
   const [draftValues, setDraftValues] = useState<Partial<Record<RegionKey, string>>>({});
   const [error, setError] = useState<string | null>(null);
+  const [justValidated, setJustValidated] = useState(false);
 
   useEffect(() => {
     saveCalibration(calibration);
@@ -89,6 +90,17 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
       if (videoRef.current) {
         videoRef.current.srcObject = s;
         await videoRef.current.play();
+        // Capture tout de suite une image de calibrage dès que la vidéo a sa première
+        // frame, pour ne pas laisser un clic de plus à deviner après le partage.
+        const video = videoRef.current;
+        const captureWhenReady = () => {
+          if (video.videoWidth > 0) {
+            const frame = grabFrame(video);
+            setCalibrationFrameUrl(frame.toDataURL('image/png'));
+          }
+        };
+        if (video.videoWidth > 0) captureWhenReady();
+        else video.addEventListener('loadeddata', captureWhenReady, { once: true });
       }
       s.getVideoTracks()[0]?.addEventListener('ended', () => setStream(null));
     } catch (err) {
@@ -160,12 +172,27 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
       else values[key as LineKey] = n;
     }
     liveCoach.applyReadValues(values, puits);
+    setJustValidated(true);
+    setTimeout(() => setJustValidated(false), 4000);
   }
 
   const calibratedCount = REGION_KEYS.filter((k) => calibration[k]).length;
+  const hasRead = Object.keys(readResults).length > 0;
 
   return (
     <div className="live-coach">
+      <div className="live-steps">
+        <span className={`live-step ${stream ? 'live-step-done' : 'live-step-active'}`}>
+          {stream ? '✓' : '①'} Partager l'écran
+        </span>
+        <span className={`live-step ${calibratedCount > 0 ? 'live-step-done' : stream ? 'live-step-active' : 'live-step-todo'}`}>
+          {calibratedCount > 0 ? '✓' : '②'} Calibrer ({calibratedCount}/{REGION_KEYS.length})
+        </span>
+        <span className={`live-step ${hasRead ? 'live-step-done' : calibratedCount > 0 ? 'live-step-active' : 'live-step-todo'}`}>
+          {hasRead ? '✓' : '③'} Lire puis valider
+        </span>
+      </div>
+
       <section className="live-capture-section">
         <h3>1. Partage d'écran</h3>
         <p className="objectives-hint">
@@ -183,12 +210,18 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
             </button>
           )}
           <button type="button" onClick={handleCaptureCalibrationFrame} disabled={!stream}>
-            Capturer une image pour calibrer
+            {calibrationFrameUrl ? 'Reprendre une image (si la fenêtre a bougé)' : 'Capturer une image pour calibrer'}
           </button>
           <button type="button" onClick={handleReadScreen} disabled={!stream || reading || calibratedCount === 0}>
-            {reading ? 'Lecture en cours…' : 'Lire l\'écran'}
+            {reading ? 'Lecture en cours…' : "Lire l'écran"}
           </button>
         </div>
+        {stream && calibratedCount === 0 && (
+          <p className="live-hint-inline">
+            ⚠️ Calibre au moins une zone ci-dessous (étape 2) — le bouton "Lire l'écran" restera grisé
+            tant qu'aucune zone n'est définie.
+          </p>
+        )}
         {error && <div className="live-error">{error}</div>}
         <video ref={videoRef} className="live-video-preview" muted playsInline />
       </section>
@@ -223,9 +256,13 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
         </section>
       )}
 
-      {Object.keys(readResults).length > 0 && (
+      {hasRead && (
         <section className="live-results-section">
           <h3>3. Valeurs lues (corrige si besoin)</h3>
+          <p className="live-success">
+            ✅ Lecture terminée — les champs en rouge n'ont pas pu être lus (tape la valeur à la main),
+            corrige le reste si besoin, puis clique "Valider ces valeurs" pour que le coach en tienne compte.
+          </p>
           <div className="read-results-grid">
             {REGION_KEYS.filter((k) => readResults[k]).map((key) => {
               const result = readResults[key]!;
@@ -250,6 +287,9 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
 
       <div className="live-coaching-layout">
         <section className="sheet-column">
+          {justValidated && (
+            <p className="live-success">✅ Valeurs appliquées — le coach ci-contre est à jour.</p>
+          )}
           <Gauges state={liveCoach.state} goals={goals} />
           <ManualValuesPanel
             state={liveCoach.state}

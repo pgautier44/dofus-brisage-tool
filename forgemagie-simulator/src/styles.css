@@ -441,6 +441,52 @@ section {
   margin-top: 16px;
 }
 
+.live-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.live-step {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: var(--panel-alt);
+}
+
+.live-step-todo {
+  opacity: 0.6;
+}
+
+.live-step-active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(217, 164, 65, 0.12);
+}
+
+.live-step-done {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: rgba(95, 174, 95, 0.12);
+}
+
+.live-hint-inline {
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.live-success {
+  color: var(--ok);
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin: 0 0 10px;
+}
+
 .live-error {
   color: var(--danger);
   font-weight: 600;
