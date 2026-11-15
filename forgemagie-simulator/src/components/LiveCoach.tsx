@@ -11,7 +11,10 @@ import { CoachPanel } from './CoachPanel';
 import { Gauges } from './Gauges';
 import { RuneGrid } from './RuneGrid';
 
-const REGION_KEYS: RegionKey[] = [...LINE_ORDER, 'puits'];
+// Le PA (exo) n'apparaît jamais comme une valeur numérique affichée dans Dofus tant qu'il
+// n'est pas obtenu (pas de ligne à cadrer) : il n'a donc pas sa place dans la liste des
+// zones à calibrer/lire par OCR — seule la saisie manuelle (0 ou 1) a du sens pour lui.
+const REGION_KEYS: RegionKey[] = [...LINE_ORDER.filter((k) => k !== 'pa'), 'puits'];
 
 function labelFor(key: RegionKey): string {
   return key === 'puits' ? 'Puits' : LINES[key].label;
@@ -62,8 +65,16 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
   const liveCoach = useLiveCoach(goals);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [calibration, setCalibration] = useState<Calibration>(() => loadCalibration());
-  const [activeKey, setActiveKey] = useState<RegionKey>('pa');
+  const [calibration, setCalibration] = useState<Calibration>(() => {
+    const stored = loadCalibration();
+    // Nettoie une éventuelle zone "pa" enregistrée avant ce correctif (plus valide).
+    const cleaned: Calibration = {};
+    REGION_KEYS.forEach((key) => {
+      if (stored[key]) cleaned[key] = stored[key];
+    });
+    return cleaned;
+  });
+  const [activeKey, setActiveKey] = useState<RegionKey>(REGION_KEYS[0]);
   const [calibrationFrameUrl, setCalibrationFrameUrl] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
   const [readResults, setReadResults] = useState<Partial<Record<RegionKey, ReadResult>>>({});
@@ -232,7 +243,11 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
           <p className="objectives-hint">
             Choisis une ligne ci-dessous puis dessine un rectangle serré autour du nombre correspondant
             dans l'image. La zone est mémorisée (même après fermeture du navigateur) tant que la fenêtre du
-            jeu garde la même position à l'écran.
+            jeu garde la même position à l'écran. <strong>Pas besoin de toutes les faire</strong> : seules les
+            zones calibrées seront lues par "Lire l'écran" ; les autres restent modifiables à la main dans
+            "Saisie / correction manuelle" ci-dessous. Le PA (exo) n'apparaît pas ici — il ne s'affiche comme
+            valeur nulle part dans Dofus tant qu'il n'est pas obtenu, donc il se renseigne uniquement à la main
+            (0 ou 1).
           </p>
           <div className="region-picker">
             {REGION_KEYS.map((key) => (
