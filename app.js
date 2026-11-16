@@ -11,7 +11,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // blocks saving while stale (see doSaveData()'s comment: that caused its own, worse data
 // loss on 2026-11-12). The actual safety net against a stale tab clobbering data is
 // mergeStateForSave(), not this version check.
-const APP_VERSION = '20261115a';
+const APP_VERSION = '20261116a';
 
 async function isVersionStale() {
   try {
@@ -402,6 +402,16 @@ function expireCraftTooExpensiveFlags() {
   return changed;
 }
 
+// Texte du compte à rebours affiché dans le tooltip de la case "Craft trop cher ?" —
+// jours restants réels avant décochage auto, pas juste un rappel statique de la règle.
+function formatExpiryCountdown(setAtIso) {
+  const expiresAt = new Date(setAtIso).getTime() + CRAFT_TOO_EXPENSIVE_EXPIRY_MS;
+  const daysLeft = Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+  if (daysLeft <= 0) return "aujourd'hui";
+  if (daysLeft === 1) return 'dans 1 jour';
+  return `le ${formatDate(new Date(expiresAt).toISOString())} (dans ${daysLeft} jours)`;
+}
+
 function formatKamas(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
   return Math.round(n).toLocaleString('fr-FR');
@@ -704,7 +714,7 @@ function createFlipPage(cfg) {
       : '';
     const isOpen = state[cfg.openDetailKey] === item.id;
     const craftTooExpensiveTitle = item.craftTooExpensive && item.craftTooExpensiveSetAt
-      ? ` title="Coché le ${formatDate(item.craftTooExpensiveSetAt)} — se décoche automatiquement 7 jours après"`
+      ? ` title="Coché le ${formatDate(item.craftTooExpensiveSetAt)} — se décoche automatiquement ${formatExpiryCountdown(item.craftTooExpensiveSetAt)}"`
       : '';
     const craftTooExpensiveCell = cfg.showCraftTooExpensive
       ? `<td class="brisage-checkbox-cell"><input type="checkbox" class="craft-too-expensive-checkbox" data-id="${item.id}" ${item.craftTooExpensive ? 'checked' : ''}${craftTooExpensiveTitle}></td>`
