@@ -45,10 +45,16 @@ async function getWorker(): Promise<Tesseract.Worker> {
 // Le puits ("reliquat" dans Dofus) est la seule valeur décimale (ex: "0,2") ; les lignes de
 // stats sont toujours des entiers. On bascule la liste de caractères autorisés juste avant
 // chaque lecture plutôt que de la fixer une fois pour toutes sur le worker partagé.
+//
+// Le "%" est inclus dans la liste même si on ne le garde jamais au parsing (parseDigits le
+// filtre) : sans lui dans la liste, Tesseract ne peut PAS afficher "%" (il est interdit par
+// la liste blanche) et approxime son tracé par le chiffre autorisé qui lui ressemble le
+// plus, ce qui colle un chiffre parasite après la vraie valeur (ex: "4%" lu "49"). Autoriser
+// "%" lui permet de le reconnaître pour ce qu'il est, pour qu'on puisse ensuite le jeter.
 async function setWhitelist(decimal: boolean): Promise<void> {
   const worker = await getWorker();
   await worker.setParameters({
-    tessedit_char_whitelist: decimal ? '0123456789,.' : '0123456789',
+    tessedit_char_whitelist: decimal ? '0123456789,.' : '0123456789%',
   });
 }
 

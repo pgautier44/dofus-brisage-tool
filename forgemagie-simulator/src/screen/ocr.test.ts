@@ -20,6 +20,11 @@ describe('parseDigits', () => {
     expect(parseDigits('')).toBeNull();
     expect(parseDigits('abc')).toBeNull();
   });
+
+  it('ignore le "%" des lignes affichées en pourcentage (% Critique, % Résistance Air)', () => {
+    expect(parseDigits('4%')).toBe(4);
+    expect(parseDigits('5 %')).toBe(5);
+  });
 });
 
 describe('parseDecimal (puits / "reliquat")', () => {
