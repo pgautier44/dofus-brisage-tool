@@ -881,3 +881,23 @@ section {
 .history-empty {
   color: var(--text-dim);
 }
+
+.calibration-guide-details {
+  margin-bottom: 10px;
+}
+
+.calibration-guide {
+  margin-top: 8px;
+}
+
+.calibration-guide svg {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.calibration-guide-caption {
+  margin-top: 10px;
+}

@@ -7,6 +7,7 @@ import { recognizeDecimal, recognizeNumber } from '../screen/ocr';
 import type { Calibration, ReadResult, RegionKey } from '../screen/types';
 import { loadCalibration, saveCalibration } from '../storage';
 import { CalibrationEditor } from './CalibrationEditor';
+import { CalibrationGuide } from './CalibrationGuide';
 import { CoachPanel } from './CoachPanel';
 import { Gauges } from './Gauges';
 import { RuneGrid } from './RuneGrid';
@@ -274,6 +275,10 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
             appelé <strong>"reliquat"</strong> dans Dofus (affiché en haut du panneau). Pour refaire une
             seule zone, redessine simplement par-dessus, ou efface-la avec le ✕.
           </p>
+          <details className="objectives-panel calibration-guide-details">
+            <summary>Voir un exemple de bon/mauvais cadrage</summary>
+            <CalibrationGuide />
+          </details>
           <div className="region-picker">
             {REGION_KEYS.map((key) => (
               <span className="region-chip-wrap" key={key}>
