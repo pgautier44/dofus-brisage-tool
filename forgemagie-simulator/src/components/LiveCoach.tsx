@@ -263,8 +263,10 @@ export function LiveCoach({ goals }: { goals: GoalOverrides }) {
             Choisis une ligne ci-dessous puis dessine un rectangle autour du nombre correspondant dans
             l'image — <strong>laisse un peu de marge</strong> (pas collé aux chiffres) : si la valeur passe
             de 2 à 3 chiffres (ex: 9 → 10) ou qu'un badge +1/-1 apparaît juste à côté après une pose, une
-            zone trop serrée peut rater le nouveau texte ou capturer le badge par erreur. La zone est
-            mémorisée tant que la fenêtre du jeu garde la même position à l'écran.{' '}
+            zone trop serrée peut rater le nouveau texte ou capturer le badge par erreur. Inclure un bout du
+            nom de la ligne (le mot, pas juste le chiffre) ne pose aucun problème : seuls les chiffres sont
+            gardés, le reste est ignoré automatiquement. La zone est mémorisée tant que la fenêtre du jeu
+            garde la même position à l'écran.{' '}
             <strong>Pas besoin de toutes les faire</strong> : seules les zones calibrées seront lues par
             "Lire l'écran" ; les autres restent modifiables à la main dans "Saisie / correction manuelle"
             ci-dessous. Le PA (exo) n'apparaît pas ici — il ne s'affiche comme valeur nulle part dans Dofus

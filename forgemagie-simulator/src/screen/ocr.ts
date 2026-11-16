@@ -1,4 +1,5 @@
 import * as Tesseract from 'tesseract.js';
+import { invertColors, stretchContrast } from './capture';
 
 let workerPromise: Promise<Tesseract.Worker> | null = null;
 
@@ -87,24 +88,60 @@ export function parseDecimal(rawText: string): number | null {
   return match ? Number(match[0]) : null;
 }
 
+// En dessous de ce seuil de confiance (0-100, renvoyé par Tesseract), on ne fait pas
+// confiance à une lecture même si elle a produit un nombre : mieux vaut retenter sur
+// une variante de l'image plutôt que de faire remonter une valeur probablement fausse.
+const OCR_CONFIDENCE_RETRY_THRESHOLD = 60;
+
+interface RawRecognition {
+  rawText: string;
+  confidence: number;
+}
+
+async function recognizeRaw(image: HTMLCanvasElement): Promise<RawRecognition> {
+  const worker = await getWorker();
+  const {
+    data: { text, confidence },
+  } = await worker.recognize(image);
+  return { rawText: text.trim(), confidence: confidence ?? 0 };
+}
+
+/**
+ * Lit une image en tentant d'abord la version à contraste étiré (l'interface de Dofus a
+ * souvent un fond dégradé sombre qui réduit le contraste texte/fond une fois réduite en
+ * niveaux de gris), puis, si la lecture échoue ou est peu fiable, une seconde tentative
+ * sur la même image inversée (certaines lignes ont un texte plus sombre que leur fond,
+ * l'inverse de l'hypothèse habituelle). Garde la meilleure des deux tentatives : en
+ * priorité celle qui a produit une valeur, puis celle à la confiance la plus haute.
+ */
+async function recognizeWithRetry(
+  image: HTMLCanvasElement,
+  parse: (rawText: string) => number | null
+): Promise<{ rawText: string; value: number | null }> {
+  const stretched = stretchContrast(image);
+  const first = await recognizeRaw(stretched);
+  const firstValue = parse(first.rawText);
+  if (firstValue !== null && first.confidence >= OCR_CONFIDENCE_RETRY_THRESHOLD) {
+    return { rawText: first.rawText, value: firstValue };
+  }
+
+  const second = await recognizeRaw(invertColors(stretched));
+  const secondValue = parse(second.rawText);
+
+  if (secondValue !== null && (firstValue === null || second.confidence > first.confidence)) {
+    return { rawText: second.rawText, value: secondValue };
+  }
+  return { rawText: first.rawText, value: firstValue };
+}
+
 /** Lit un nombre entier sur une image déjà recadrée sur la zone concernée. */
 export async function recognizeNumber(image: HTMLCanvasElement): Promise<{ rawText: string; value: number | null }> {
   await setWhitelist(false);
-  const worker = await getWorker();
-  const {
-    data: { text },
-  } = await worker.recognize(image);
-  const rawText = text.trim();
-  return { rawText, value: parseDigits(rawText) };
+  return recognizeWithRetry(image, parseDigits);
 }
 
 /** Comme recognizeNumber, mais autorise une virgule/point pour lire le puits ("reliquat"). */
 export async function recognizeDecimal(image: HTMLCanvasElement): Promise<{ rawText: string; value: number | null }> {
   await setWhitelist(true);
-  const worker = await getWorker();
-  const {
-    data: { text },
-  } = await worker.recognize(image);
-  const rawText = text.trim();
-  return { rawText, value: parseDecimal(rawText) };
+  return recognizeWithRetry(image, parseDecimal);
 }
