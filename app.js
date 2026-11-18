@@ -11,7 +11,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // blocks saving while stale (see doSaveData()'s comment: that caused its own, worse data
 // loss on 2026-11-12). The actual safety net against a stale tab clobbering data is
 // mergeStateForSave(), not this version check.
-const APP_VERSION = '20261116a';
+const APP_VERSION = '20261118a';
 
 async function isVersionStale() {
   try {
@@ -782,7 +782,10 @@ function createFlipPage(cfg) {
         // passent en premier (on peut les relancer tout de suite), puis les autres —
         // peu importe le tri choisi par ailleurs, qui reste le tri secondaire à
         // l'intérieur de chacun des deux groupes (tri stable).
-        opportunityRows.sort((a, b) => Number(a.item.craftTooExpensive) - Number(b.item.craftTooExpensive));
+        // `craftTooExpensive` vaut `undefined` (pas `false`) tant que la case n'a jamais
+        // été touchée sur un item : Number(undefined) donne NaN, qui cassait ce tri pour
+        // tous les items jamais cochés (la grande majorité). Le `|| 0` ramène NaN à 0.
+        opportunityRows.sort((a, b) => (Number(a.item.craftTooExpensive) || 0) - (Number(b.item.craftTooExpensive) || 0));
       }
 
       let html = '';
